@@ -1,20 +1,22 @@
-/*! This is a small crate that provides a generic unital-join-semilattice type
- * (hereafter: "lattice") along with a few common instances.
- *
- * Lattices are defined in two separate pieces: a _definition_ trait
- * `LatticeDef` that provides the type-and-functions for a given lattice and a
- * _user interface_ struct `LatticeElt` that's parameterized by a `LatticeDef`
- * and provides convenient methods to work with (including impls of standard
- * Rust operator traits).
- *
- * This unusual split exists because many types have multiple equally viable
- * lattices you can build on them (eg. u32-with-min or u32-with-max) and we want
- * to avoid both coupling any given lattice definition to the type _or_
- * accidentally inheriting an impl for any of the type's "standard semantics" as
- * the lattice semantics, eg. we don't want to inherit u32's standard partial
- * order as any lattice's partial order, unless explicitly building such a
- * lattice.
- */
+/*!
+
+This is a small crate that provides a generic unital-join-semilattice type
+(hereafter: "lattice") along with a few common instances.
+
+Lattices are defined in two separate pieces: a _definition_ trait `LatticeDef`
+that provides the type-and-functions for a given lattice and a _user interface_
+struct `LatticeElt` that's parameterized by a `LatticeDef` and provides
+convenient methods to work with (including impls of standard Rust operator
+traits).
+
+This unusual split exists because many types have multiple equally viable
+lattices you can build on them (eg. u32-with-min or u32-with-max) and we want to
+avoid both coupling any given lattice definition to the type _or_ accidentally
+inheriting an impl for any of the type's "standard semantics" as the lattice
+semantics, eg. we don't want to inherit u32's standard partial order as any
+lattice's partial order, unless explicitly building such a lattice.
+
+*/
 
 // TODO: Maybe add hash maps and sets
 // TODO: Maybe split struct into struct + trait
@@ -237,10 +239,10 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef>
     }
 }
 
-/// We have to use a marker trait here to pick out types where Default is safe
-/// to use as a lattice unit. In particular it's _not_ safe in types like signed
-/// integers, where there are many values less than the default.
-trait MaxUnitDefault: Default {}
+/// A marker trait here to pick out types where `Default::default` is safe to
+/// use as a unit for a max-lattice. In particular it's _not_ safe in types like
+/// signed integers, where there are many values less than `Default::default`.
+pub trait MaxUnitDefault: Default {}
 impl MaxUnitDefault for String {}
 impl MaxUnitDefault for bool {}
 impl MaxUnitDefault for char {}
@@ -260,8 +262,9 @@ impl<T: MaxUnitDefault> MaxUnitDefault for std::cell::RefCell<T> {}
 impl<T: MaxUnitDefault> MaxUnitDefault for std::rc::Rc<T> {}
 impl<T: MaxUnitDefault> MaxUnitDefault for Vec<T> {}
 
-/// Other types we want to use the Bounded::min_value as the unit for max.
-trait MaxUnitMinValue: Bounded {}
+/// A marker type for other types that use the `Bounded::min_value` as the unit
+/// for a max-lattice.
+pub trait MaxUnitMinValue: Bounded {}
 impl MaxUnitMinValue for i8 {}
 impl MaxUnitMinValue for i16 {}
 impl MaxUnitMinValue for i32 {}
@@ -273,7 +276,7 @@ impl MaxUnitMinValue for i128 {}
 /// words this is the "most normal" lattice over unsigned scalar, vector or
 /// string types, probably the one you want most of the time.
 #[derive(Debug)]
-struct MaxDef<M> {
+pub struct MaxDef<M> {
     phantom: PhantomData<M>,
 }
 impl<M: Ord + Clone + MaxUnitDefault> LatticeDef for MaxDef<M> {
@@ -293,7 +296,7 @@ impl<M: Ord + Clone + MaxUnitDefault> LatticeDef for MaxDef<M> {
 /// element type, as well as `Bounded::min_value` as its unit. This is
 /// similar to `MaxDef` except it works with signed types.
 #[derive(Debug)]
-struct MaxNum<M> {
+pub struct MaxNum<M> {
     phantom: PhantomData<M>,
 }
 impl<M: Ord + Clone + MaxUnitMinValue> LatticeDef for MaxNum<M> {
@@ -321,7 +324,7 @@ impl<M: Ord + Clone + MaxUnitMinValue> LatticeDef for MaxNum<M> {
 /// u32::MAX. For those, use MinNum. Both are _safe_, but MinOpt is weird in
 /// those cases.
 #[derive(Debug)]
-struct MinOpt<M> {
+pub struct MinOpt<M> {
     phantom: PhantomData<M>,
 }
 impl<M: Ord + Clone> LatticeDef for MinOpt<M> {
@@ -358,7 +361,7 @@ impl<M: Ord + Clone> LatticeDef for MinOpt<M> {
 /// the additional "maximal value" tacked on in `MinOpt`. Best option for
 /// numeric lattices with join as minimum.
 #[derive(Debug)]
-struct MinNum<M> {
+pub struct MinNum<M> {
     phantom: PhantomData<M>,
 }
 impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
@@ -384,7 +387,7 @@ impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
 /// order), and of course joining by max (or min) of that order will not produce
 /// a union (or intersection) as one would want.
 #[derive(Debug)]
-struct BitSetWithUnion;
+pub struct BitSetWithUnion;
 impl LatticeDef for BitSetWithUnion {
     type T = BitSet;
     fn unit() -> Self::T {
@@ -416,7 +419,7 @@ impl LatticeDef for BitSetWithUnion {
 /// lattice, taking set-intersections from the "maximal" unit upwards towards
 /// the empty set (at the top of the lattice).
 #[derive(Debug)]
-struct BitSetWithIntersection;
+pub struct BitSetWithIntersection;
 impl LatticeDef for BitSetWithIntersection {
     type T = Option<BitSet>;
     fn unit() -> Self::T {
@@ -459,7 +462,7 @@ impl LatticeDef for BitSetWithIntersection {
 /// favour of the join-induced partial order: a subset relation extended with
 /// the lattice orders of the values when the same key is present in both maps.
 #[derive(Debug)]
-struct BTreeMapWithUnion<K: Ord + Clone, VD: LatticeDef> {
+pub struct BTreeMapWithUnion<K: Ord + Clone, VD: LatticeDef> {
     phantom1: PhantomData<K>,
     phantom2: PhantomData<VD>,
 }
@@ -519,12 +522,12 @@ where
     }
 }
 
-/// Similar to other intersection-based lattices above, this lattice is a map
-/// that stores inner lattices and joins using intersection. Maps are
+/// Similar to other intersection-based lattices in this crate, this lattice is
+/// a map that stores inner lattices and joins using intersection. Maps are
 /// represented as `Option<BTreeMap>` and the unit is again a putative "maximum"
 /// map-with-all-possible-keys (represented by `None`).
 #[derive(Debug)]
-struct BTreeMapWithIntersection<K: Ord + Clone, VD: LatticeDef> {
+pub struct BTreeMapWithIntersection<K: Ord + Clone, VD: LatticeDef> {
     phantom1: PhantomData<K>,
     phantom2: PhantomData<VD>,
 }
@@ -623,7 +626,7 @@ where
 /// This is the same semantics as the `BitSetWithUnion` lattice, but covering
 /// sets of arbitrary ordered values.
 #[derive(Debug)]
-struct BTreeSetWithUnion<U: Clone + Ord> {
+pub struct BTreeSetWithUnion<U: Clone + Ord> {
     phantom: PhantomData<U>,
 }
 impl<U: Clone + Ord> LatticeDef for BTreeSetWithUnion<U> {
@@ -650,7 +653,7 @@ impl<U: Clone + Ord> LatticeDef for BTreeSetWithUnion<U> {
 /// This is the same semantics as the `BitSetWithIntersection` lattice, but
 /// covering sets of arbitrary ordered values.
 #[derive(Debug)]
-struct BTreeSetWithIntersection<U: Clone + Ord> {
+pub struct BTreeSetWithIntersection<U: Clone + Ord> {
     phantom: PhantomData<U>,
 }
 impl<U: Clone + Ord> LatticeDef for BTreeSetWithIntersection<U> {
@@ -693,7 +696,7 @@ impl<U: Clone + Ord> LatticeDef for BTreeSetWithIntersection<U> {
 /// If you need more than 5-element tuples, maybe just nest these (or submit a
 /// pull request).
 #[derive(Debug)]
-struct Tuple2<A: LatticeDef, B: LatticeDef> {
+pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
 }
@@ -718,7 +721,7 @@ impl<A: LatticeDef, B: LatticeDef> LatticeDef for Tuple2<A, B> {
 }
 
 #[derive(Debug)]
-struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
+pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
     phantom3: PhantomData<C>,
@@ -748,7 +751,7 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C>
 }
 
 #[derive(Debug)]
-struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
+pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
     phantom3: PhantomData<C>,
@@ -785,7 +788,7 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for 
 }
 
 #[derive(Debug)]
-struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
+pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
     phantom3: PhantomData<C>,
