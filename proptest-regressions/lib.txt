@@ -1,0 +1,21 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4d54973ba2ea19098b72c98164458b75ab1ae425e30d89e0c65094bdfdf17bb3 # shrinks to (a, b, c) = (LatticeElt { value: {44, 45} }, LatticeElt { value: {44, 45} }, LatticeElt { value: {44, 45} })
+cc 72ba3434e583a07211dc25f68284bada484367f7be4f41db9799cb91d27a5a8e # shrinks to (a, b, c) = (LatticeElt { value: None }, LatticeElt { value: None }, LatticeElt { value: None })
+cc 276ac07cb18c57f4a26b7a1be4b3fcaed56323254e7b944db38b62acbe4f776e # shrinks to (a, b, c) = ((0, 0, 0), (0, 0, 0), (0, 0, 0))
+cc f308c30e216789e34f6a95244bdc276ad8d0a6d9f15d0f1be9406ca5320397c2 # shrinks to (a, b, c) = ((0, 0, 0), (0, 0, 0), (0, 0, 0))
+cc b69fd9ab1babbb344984a04d233f57bc2de6a667e064b5c35cbadf6ca0df0c51 # shrinks to (a, b, c) = ((0, 0, 0), (0, 0, 0), (0, 0, 0))
+cc 78abfb1b9052ccba31320fc27c5be3a0c8ffe2f6de4ac2ec1662e76f89c1572f # shrinks to a = None, b = None, c = None
+cc faf3f454ef110e44c0bc286369d282a32f73a29290786ac62c4295134e98a3c0 # shrinks to a = None, b = None, c = None
+cc d3e552800bb3067019d1b71b98dcf4d51b59cbd0f5bbdad6706d76c65427ca91 # shrinks to a = "a", b = "a", c = "a"
+cc 9d3237a0e0babb32fc884715324661c19da9ebc29aa8ac6c83e9826f8a6c7eba # shrinks to a = "a", b = "a", c = "a"
+cc 05a933ed06a12fe4bc087feb955857707c962971e8f179b7c2b812a281afab5b # shrinks to a = "a", b = "a", c = "a"
+cc 99ff42e1977380bdee0fe1ff8bdaf99da83f84e44527fbe5bc0b3cd66faf3451 # shrinks to a = "a", b = "a", c = "a"
+cc 9f758f0c646eb013852dc027a288d79fd0784e3e8afedc237dafe0a22dd5eb1a # shrinks to a = "a", b = "a", c = "a"
+cc 206aa0cb0c3b019b22ab4c443a77a3e3287b01cdd94e2e0a4fc932473362b607 # shrinks to a = 0, b = 0, c = 0
+cc aa20792ee2cebadfb09be7717ea45c0e5156ede6860b8348befaa84e91ac9d46 # shrinks to (a, b, c) = ((0, 0, 0), (0, 0, 0), (0, 0, 0))
+cc f080e205b05054d523a9357ce4686499fa4c42e1ee8174e295ccf033f80055ab # shrinks to (a, b, c) = ({0: LatticeElt { value: 0 }, 1: LatticeElt { value: 0 }, 2: LatticeElt { value: 0 }}, {0: LatticeElt { value: 0 }, 1: LatticeElt { value: 0 }, 2: LatticeElt { value: 0 }}, {0: LatticeElt { value: 0 }, 1: LatticeElt { value: 0 }, 2: LatticeElt { value: 0 }})
