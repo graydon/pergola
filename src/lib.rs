@@ -16,6 +16,47 @@ inheriting an impl for any of the type's "standard semantics" as the lattice
 semantics, eg. we don't want to inherit u32's standard partial order as any
 lattice's partial order, unless explicitly building such a lattice.
 
+# Examples
+
+## Simple u32-with-max lattice
+
+```
+use pergola::{MaxDef,LatticeElt};
+
+type Def = MaxDef<u32>;      // lattice def for "u32 with max for join"
+type Elt = LatticeElt<Def>;  // element struct, implementing std traits
+let v = Elt::new_from(1);
+let u = Elt::new_from(2);
+let w = v + u;               // calls join(), which calls max()
+assert!(v < u);
+assert!(v < w);
+```
+
+## Trickier union-map-of-union-bitsets lattice
+
+```
+use pergola::{BTreeMapWithUnion,BitSetWithUnion,LatticeElt};
+use bit_set::BitSet;
+use std::collections::BTreeMap;
+
+type Def = BTreeMapWithUnion<String,BitSetWithUnion>;
+type Elt = LatticeElt<Def>;
+let bs_a1 = BitSet::from_bytes(&[0b11110000]);
+let bs_a2 = BitSet::from_bytes(&[0b00001111]);
+let bs_b = BitSet::from_bytes(&[0b10101010]);
+let v = Elt::new_from([(String::from("a"),bs_a1.into()),
+                       (String::from("b"),bs_b.into())].iter().cloned().collect());
+let u = Elt::new_from([(String::from("a"),bs_a2.into())].iter().cloned().collect());
+let w = &v + &u;
+assert!(!(v < u));  // bs_a1 is not a subset of bs_a2,
+                    // so v["a"] is unordered wrt. u["a"].
+assert!(v < w);     // However, w is a join and join unions
+                    // the values at common keys, so v["a"] < w["a"].
+assert!(u < w);     // And likewise the other input to the join.
+assert_eq!(w.value["a"].value, BitSet::from_bytes(&[0b11111111]));
+assert_eq!(w.value["b"].value, BitSet::from_bytes(&[0b10101010]));
+```
+
 */
 
 // TODO: Maybe add hash maps and sets
@@ -43,7 +84,7 @@ pub trait LatticeDef {
 /// to the functions of the parameter `LatticeDef`.
 #[derive(Debug)]
 pub struct LatticeElt<D: LatticeDef> {
-    value: D::T,
+    pub value: D::T,
 }
 
 impl<D: LatticeDef> Clone for LatticeElt<D>
@@ -124,10 +165,10 @@ where
 }
 
 impl<D: LatticeDef> LatticeElt<D> {
-    fn new_from(t: D::T) -> Self {
+    pub fn new_from(t: D::T) -> Self {
         LatticeElt { value: t }
     }
-    fn join(&self, other: &Self) -> Self {
+    pub fn join(&self, other: &Self) -> Self {
         Self::new_from(D::join(&self.value, &other.value))
     }
 }
