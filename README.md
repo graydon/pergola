@@ -16,6 +16,10 @@ inheriting an impl for any of the type's "standard semantics" as the lattice
 semantics, eg. we don't want to inherit u32's standard partial order as any
 lattice's partial order, unless explicitly building such a lattice.
 
+To minimize disruption caused by this two-level wrapping scheme and provide a
+degree of compositionality, every `LatticeElt` also implements `LatticeDef` by
+delegation to the `LatticeDef` it's parameterized over.
+
 # Examples
 
 ## Simple u32-with-max lattice
@@ -56,3 +60,11 @@ assert!(u < w);     // And likewise the other input to the join.
 assert_eq!(w.value["a"].value, BitSet::from_bytes(&[0b11111111]));
 assert_eq!(w.value["b"].value, BitSet::from_bytes(&[0b10101010]));
 ```
+
+# Name
+
+Wikipedia:
+
+A pergola is an outdoor garden feature forming a shaded walkway, passageway, or
+sitting area of vertical posts or pillars that usually support cross-beams and a
+sturdy open lattice, often upon which woody vines are trained.
