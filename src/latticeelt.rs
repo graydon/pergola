@@ -28,17 +28,17 @@ where
 
 impl<D: LatticeDef> LatticeDef for LatticeElt<D>
 {
-    type T = D::T;
+    type T = LatticeElt<D>;
     fn unit() -> Self::T {
-        D::unit()
+        Self::default()
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T
     {
-        D::join(lhs, rhs)
+        lhs + rhs
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering>
     {
-        D::partial_order(lhs, rhs)
+        D::partial_order(&lhs.value, &rhs.value)
     }
 }
 
