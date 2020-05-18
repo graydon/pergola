@@ -2,11 +2,25 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::LatticeElt;
-use bit_set::BitSet;
 use num_traits::bounds::Bounded;
 use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::{BTreeMap, BTreeSet};
 use std::marker::PhantomData;
+
+#[cfg(feature = "bit-set")]
+use bit_set::BitSet;
+
+#[cfg(feature = "im")]
+use im::OrdMap as ArcOrdMap;
+
+#[cfg(feature = "im")]
+use im::OrdSet as ArcOrdSet;
+
+#[cfg(feature = "im-rc")]
+use im_rc::OrdMap as RcOrdMap;
+
+#[cfg(feature = "im-rc")]
+use im_rc::OrdSet as RcOrdSet;
 
 
 /// Implement this trait on a (typically vacuous) type to define a specific
@@ -165,8 +179,11 @@ impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
 /// rather than set-theoretic sub/superset relation (which is only a partial
 /// order), and of course joining by max (or min) of that order will not produce
 /// a union (or intersection) as one would want.
+#[cfg(feature = "bit-set")]
 #[derive(Debug)]
 pub struct BitSetWithUnion;
+
+#[cfg(feature = "bit-set")]
 impl LatticeDef for BitSetWithUnion {
     type T = BitSet;
     fn unit() -> Self::T {
@@ -197,8 +214,11 @@ impl LatticeDef for BitSetWithUnion {
 /// `Bitset`) as well as a join that inverts the typical order of a set-valued
 /// lattice, taking set-intersections from the "maximal" unit upwards towards
 /// the empty set (at the top of the lattice).
+#[cfg(feature = "bit-set")]
 #[derive(Debug)]
 pub struct BitSetWithIntersection;
+
+#[cfg(feature = "bit-set")]
 impl LatticeDef for BitSetWithIntersection {
     type T = Option<BitSet>;
     fn unit() -> Self::T {
@@ -232,157 +252,63 @@ impl LatticeDef for BitSetWithIntersection {
     }
 }
 
-/// This is a lattice for maps that contain other lattices as values. The join
-/// operator takes the union of (key, value) pairs for keys present in only one
-/// map -- equivalent to an elementwise join-with-unit -- and the elementwise
-/// join of values for keys that exist in both maps.
-///
-/// As with `BitSet`, this avoids the typical _lexicographic_ order on maps in
-/// favour of the join-induced partial order: a subset relation extended with
-/// the lattice orders of the values when the same key is present in both maps.
-#[derive(Debug)]
-pub struct BTreeMapWithUnion<K: Ord + Clone, VD: LatticeDef> {
-    phantom1: PhantomData<K>,
-    phantom2: PhantomData<VD>,
-}
-impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for BTreeMapWithUnion<K, VD>
-where
-    VD::T: Clone,
-{
-    type T = BTreeMap<K, LatticeElt<VD>>;
-    fn unit() -> Self::T {
-        BTreeMap::default()
-    }
-    fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
-        let mut tmp: Self::T = (*lhs).clone();
-        for (k, v) in rhs.iter() {
-            tmp.entry(k.clone())
-                .and_modify(|e| *e = e.join(v))
-                .or_insert(v.clone());
-        }
-        tmp
-    }
-    fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
-        // This is a complicated partial order: lhs <= rhs if lhs has a subset
-        // of the keys in rhs _and_ every lhs value of every common key is <=
-        // the rhs value. If common-key values are ordered with any mix of
-        // greater or lesser, or if any values on common keys are unordered, the
-        // maps are unordered.
-        let mut lhs_lt_rhs_at_some_key = false;
-        let mut rhs_lt_lhs_at_some_key = false;
-        for (k, lv) in lhs.iter() {
-            match rhs.get(k) {
-                None => rhs_lt_lhs_at_some_key = true,
-                Some(rv) => match lv.partial_cmp(rv) {
-                    Some(Ordering::Equal) => (),
-                    Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
-                    Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
-                    None => return None,
-                },
-            }
-        }
-        for (k, rv) in rhs.iter() {
-            match lhs.get(k) {
-                None => lhs_lt_rhs_at_some_key = true,
-                Some(lv) => match lv.partial_cmp(rv) {
-                    Some(Ordering::Equal) => (),
-                    Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
-                    Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
-                    None => return None,
-                },
-            }
-        }
-        match (lhs_lt_rhs_at_some_key, rhs_lt_lhs_at_some_key) {
-            (false, false) => Some(Ordering::Equal),
-            (true, false) => Some(Ordering::Less),
-            (false, true) => Some(Ordering::Greater),
-            (true, true) => None,
-        }
-    }
-}
+macro_rules! impl_map_with_union {
+    ($LDef:ident, $Map:ident) => {
 
-/// Similar to other intersection-based lattices in this crate, this lattice is
-/// a map that stores inner lattices and joins using intersection. Maps are
-/// represented as `Option<BTreeMap>` and the unit is again a putative "maximum"
-/// map-with-all-possible-keys (represented by `None`).
-#[derive(Debug)]
-pub struct BTreeMapWithIntersection<K: Ord + Clone, VD: LatticeDef> {
-    phantom1: PhantomData<K>,
-    phantom2: PhantomData<VD>,
-}
-impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for BTreeMapWithIntersection<K, VD>
-where
-    VD::T: Clone,
-{
-    type T = Option<BTreeMap<K, LatticeElt<VD>>>;
-    fn unit() -> Self::T {
-        None
-    }
-    fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
-        match (lhs, rhs) {
-            (None, None) => None,
-            (Some(_), None) => lhs.clone(),
-            (None, Some(_)) => rhs.clone(),
-            (Some(lmap), Some(rmap)) => {
-                let mut tmp = BTreeMap::<K, LatticeElt<VD>>::default();
-                for (k, lv) in lmap.iter() {
-                    match rmap.get(k) {
-                        None => (),
-                        Some(rv) => {
-                            tmp.insert(k.clone(), lv.join(rv));
-                        }
-                    }
+        /// This is a lattice for maps that contain other lattices as
+        /// values. The join operator takes the union of (key, value) pairs for
+        /// keys present in only one map -- equivalent to an elementwise
+        /// join-with-unit -- and the elementwise join of values for keys that
+        /// exist in both maps.
+        ///
+        /// As with `BitSet`, this avoids the typical _lexicographic_ order on
+        /// maps in favour of the join-induced partial order: a subset relation
+        /// extended with the lattice orders of the values when the same key is
+        /// present in both maps.
+        #[derive(Debug)]
+        pub struct $LDef<K: Ord + Clone, VD: LatticeDef> {
+            phantom1: PhantomData<K>,
+            phantom2: PhantomData<VD>,
+        }
+        impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for $LDef<K, VD>
+        where
+            VD::T: Clone,
+        {
+            type T = $Map<K, LatticeElt<VD>>;
+            fn unit() -> Self::T {
+                $Map::default()
+            }
+            fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
+                let mut tmp: Self::T = (*lhs).clone();
+                for (k, v) in rhs.iter() {
+                    tmp.entry(k.clone())
+                        .and_modify(|e| *e = e.join(v))
+                        .or_insert(v.clone());
                 }
-                Some(tmp)
+                tmp
             }
-        }
-    }
-    fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
-        // This is a complicated partial order: lhs <= rhs if lhs has a superset
-        // of the keys in rhs _and_ every lhs value of every common key is <=
-        // the rhs value. If common-key values are ordered with any mix of
-        // greater or lesser, or if any values on common keys are unordered, the
-        // maps are unordered.
-        match (lhs, rhs) {
-            (None, None) => Some(Ordering::Equal),
-
-            // The None element is the unit, the map-with-all-possible-values,
-            // which is less-than all other maps in the intersection-based
-            // partial order.
-            (None, Some(_)) => Some(Ordering::Less),
-            (Some(_), None) => Some(Ordering::Greater),
-
-            // When we have two maps with definite subsets-of-all-keys, we look at
-            // them element-wise.
-            (Some(lmap), Some(rmap)) => {
+            fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
+                // This is a complicated partial order: lhs <= rhs if lhs has a subset
+                // of the keys in rhs _and_ every lhs value of every common key is <=
+                // the rhs value. If common-key values are ordered with any mix of
+                // greater or lesser, or if any values on common keys are unordered, the
+                // maps are unordered.
                 let mut lhs_lt_rhs_at_some_key = false;
                 let mut rhs_lt_lhs_at_some_key = false;
-                for (k, lv) in lmap.iter() {
-                    match rmap.get(k) {
-                        // If lmap has a value and rmap hasn't, lmap is "less
-                        // than" (has more values than) rmap in the intersection
-                        // partial order. This is the opposite interpretation of
-                        // present-vs-absent keys as we have above in the union
-                        // map code.
-                        None => lhs_lt_rhs_at_some_key = true,
-                        Some(rv) => {
-                            // When we have keys in both maps, we defer to the
-                            // partial order of the values. Note that we do
-                            // _not_ invert the partial order among the values
-                            // here, so this branch contains the same code as
-                            // above in the union map code.
-                            match lv.partial_cmp(rv) {
-                                Some(Ordering::Equal) => (),
-                                Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
-                                Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
-                                None => return None,
-                            }
-                        }
+                for (k, lv) in lhs.iter() {
+                    match rhs.get(k) {
+                        None => rhs_lt_lhs_at_some_key = true,
+                        Some(rv) => match lv.partial_cmp(rv) {
+                            Some(Ordering::Equal) => (),
+                            Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
+                            Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
+                            None => return None,
+                        },
                     }
                 }
-                for (k, rv) in rmap.iter() {
-                    match lmap.get(k) {
-                        None => rhs_lt_lhs_at_some_key = true,
+                for (k, rv) in rhs.iter() {
+                    match lhs.get(k) {
+                        None => lhs_lt_rhs_at_some_key = true,
                         Some(lv) => match lv.partial_cmp(rv) {
                             Some(Ordering::Equal) => (),
                             Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
@@ -401,6 +327,169 @@ where
         }
     }
 }
+
+impl_map_with_union!(BTreeMapWithUnion, BTreeMap);
+
+#[cfg(feature = "im")]
+impl_map_with_union!(ArcOrdMapWithUnion, ArcOrdMap);
+
+#[cfg(feature = "im-rc")]
+impl_map_with_union!(RcOrdMapWithUnion, RcOrdMap);
+
+macro_rules! impl_map_with_intersection {
+    ($LDef:ident, $Map:ident) => {
+        /// Similar to other intersection-based lattices in this crate, this
+        /// lattice is a map that stores inner lattices and joins using
+        /// intersection. Maps are represented as `Option<BTreeMap>` and the
+        /// unit is again a putative "maximum" map-with-all-possible-keys
+        /// (represented by `None`).
+        #[derive(Debug)]
+        pub struct $LDef<K: Ord + Clone, VD: LatticeDef> {
+            phantom1: PhantomData<K>,
+            phantom2: PhantomData<VD>,
+        }
+
+        impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for $LDef<K, VD>
+        where
+            VD::T: Clone,
+        {
+            type T = Option<$Map<K, LatticeElt<VD>>>;
+            fn unit() -> Self::T {
+                None
+            }
+            fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
+                match (lhs, rhs) {
+                    (None, None) => None,
+                    (Some(_), None) => lhs.clone(),
+                    (None, Some(_)) => rhs.clone(),
+                    (Some(lmap), Some(rmap)) => {
+                        let mut tmp = $Map::<K, LatticeElt<VD>>::default();
+                        for (k, lv) in lmap.iter() {
+                            match rmap.get(k) {
+                                None => (),
+                                Some(rv) => {
+                                    tmp.insert(k.clone(), lv.join(rv));
+                                }
+                            }
+                        }
+                        Some(tmp)
+                    }
+                }
+            }
+            fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
+                // This is a complicated partial order: lhs <= rhs if lhs has a
+                // superset of the keys in rhs _and_ every lhs value of every
+                // common key is <= the rhs value. If common-key values are
+                // ordered with any mix of greater or lesser, or if any values
+                // on common keys are unordered, the maps are unordered.
+                match (lhs, rhs) {
+                    (None, None) => Some(Ordering::Equal),
+
+                    // The None element is the unit, the
+                    // map-with-all-possible-values, which is less-than all
+                    // other maps in the intersection-based partial order.
+                    (None, Some(_)) => Some(Ordering::Less),
+                    (Some(_), None) => Some(Ordering::Greater),
+
+                    // When we have two maps with definite subsets-of-all-keys,
+                    // we look at them element-wise.
+                    (Some(lmap), Some(rmap)) => {
+                        let mut lhs_lt_rhs_at_some_key = false;
+                        let mut rhs_lt_lhs_at_some_key = false;
+                        for (k, lv) in lmap.iter() {
+                            match rmap.get(k) {
+                                // If lmap has a value and rmap hasn't, lmap is
+                                // "less than" (has more values than) rmap in
+                                // the intersection partial order. This is the
+                                // opposite interpretation of present-vs-absent
+                                // keys as we have above in the union map code.
+                                None => lhs_lt_rhs_at_some_key = true,
+                                Some(rv) => {
+                                    // When we have keys in both maps, we defer
+                                    // to the partial order of the values. Note
+                                    // that we do _not_ invert the partial order
+                                    // among the values here, so this branch
+                                    // contains the same code as above in the
+                                    // union map code.
+                                    match lv.partial_cmp(rv) {
+                                        Some(Ordering::Equal) => (),
+                                        Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
+                                        Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
+                                        None => return None,
+                                    }
+                                }
+                            }
+                        }
+                        for (k, rv) in rmap.iter() {
+                            match lmap.get(k) {
+                                None => rhs_lt_lhs_at_some_key = true,
+                                Some(lv) => match lv.partial_cmp(rv) {
+                                    Some(Ordering::Equal) => (),
+                                    Some(Ordering::Less) => lhs_lt_rhs_at_some_key = true,
+                                    Some(Ordering::Greater) => rhs_lt_lhs_at_some_key = true,
+                                    None => return None,
+                                },
+                            }
+                        }
+                        match (lhs_lt_rhs_at_some_key, rhs_lt_lhs_at_some_key) {
+                            (false, false) => Some(Ordering::Equal),
+                            (true, false) => Some(Ordering::Less),
+                            (false, true) => Some(Ordering::Greater),
+                            (true, true) => None,
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl_map_with_intersection!(BTreeMapWithIntersection, BTreeMap);
+
+#[cfg(feature = "im")]
+impl_map_with_intersection!(ArcOrdMapWithIntersection, ArcOrdMap);
+
+#[cfg(feature = "im-rc")]
+impl_map_with_intersection!(RcOrdMapWithIntersection, RcOrdMap);
+
+#[cfg(any(feature = "im", feature = "im-rc"))]
+macro_rules! impl_im_set_with_union {
+    ($LDef:ident, $Set:ident) => {
+
+        /// This is the same semantics as the `BitSetWithUnion` lattice, but
+        /// covering sets of arbitrary ordered values.
+        #[derive(Debug)]
+        pub struct $LDef<U: Clone + Ord> {
+            phantom: PhantomData<U>,
+        }
+        impl<U: Clone + Ord> LatticeDef for $LDef<U> {
+            type T = $Set<U>;
+            fn unit() -> Self::T {
+                $Set::default()
+            }
+            fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
+                lhs.clone().union(rhs.clone())
+            }
+            fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
+                if lhs == rhs {
+                    Some(Ordering::Equal)
+                } else if lhs.is_subset(rhs) {
+                    Some(Ordering::Less)
+                } else if rhs.is_subset(lhs) {
+                    Some(Ordering::Greater)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "im")]
+impl_im_set_with_union!(ArcOrdSetWithUnion, ArcOrdSet);
+
+#[cfg(feature = "im-rc")]
+impl_im_set_with_union!(RcOrdSetWithUnion, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithUnion` lattice, but covering
 /// sets of arbitrary ordered values.
@@ -428,6 +517,57 @@ impl<U: Clone + Ord> LatticeDef for BTreeSetWithUnion<U> {
         }
     }
 }
+
+#[cfg(any(feature = "im", feature = "im-rc"))]
+macro_rules! impl_im_set_with_intersection {
+    ($LDef:ident, $Set:ident) => {
+
+        /// This is the same semantics as the `BitSetWithIntersection` lattice, but
+        /// covering sets of arbitrary ordered values.
+        #[derive(Debug)]
+        pub struct $LDef<U: Clone + Ord> {
+            phantom: PhantomData<U>,
+        }
+        impl<U: Clone + Ord> LatticeDef for $LDef<U> {
+            type T = Option<$Set<U>>;
+            fn unit() -> Self::T {
+                None
+            }
+            fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
+                match (lhs, rhs) {
+                    (None, None) => None,
+                    (None, Some(_)) => rhs.clone(),
+                    (Some(_), None) => lhs.clone(),
+                    (Some(a), Some(b)) => Some(a.clone().intersection(b.clone())),
+                }
+            }
+            fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
+                match (lhs, rhs) {
+                    (None, None) => Some(Ordering::Equal),
+                    (None, Some(_)) => Some(Ordering::Less),
+                    (Some(_), None) => Some(Ordering::Greater),
+                    (Some(a), Some(b)) => {
+                        if a == b {
+                            Some(Ordering::Equal)
+                        } else if a.is_subset(b) {
+                            Some(Ordering::Greater)
+                        } else if b.is_subset(a) {
+                            Some(Ordering::Less)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "im")]
+impl_im_set_with_intersection!(ArcOrdSetWithIntersection, ArcOrdSet);
+
+#[cfg(feature = "im-rc")]
+impl_im_set_with_intersection!(RcOrdSetWithIntersection, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithIntersection` lattice, but
 /// covering sets of arbitrary ordered values.

@@ -2,12 +2,26 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::*;
-use bit_set::BitSet;
 use num_traits::bounds::Bounded;
 use std::cmp::{Eq, Ord, Ordering, PartialOrd};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Add;
+
+#[cfg(feature = "bit-set")]
+use bit_set::BitSet;
+
+#[cfg(feature = "im")]
+use im::OrdMap as ArcOrdMap;
+
+#[cfg(feature = "im")]
+use im::OrdSet as ArcOrdSet;
+
+#[cfg(feature = "im-rc")]
+use im_rc::OrdMap as RcOrdMap;
+
+#[cfg(feature = "im-rc")]
+use im_rc::OrdSet as RcOrdSet;
 
 /// Write code that _uses_ lattices over this type, and it will delegate
 /// to the functions of the parameter `LatticeDef`.
@@ -152,12 +166,14 @@ impl<M: Ord + Clone + Bounded> From<M> for LatticeElt<MinNum<M>> {
     }
 }
 
+#[cfg(feature = "bit-set")]
 impl From<BitSet> for LatticeElt<BitSetWithUnion> {
     fn from(t: BitSet) -> Self {
         Self::new_from(t)
     }
 }
 
+#[cfg(feature = "bit-set")]
 impl From<BitSet> for LatticeElt<BitSetWithIntersection> {
     fn from(t: BitSet) -> Self {
         Self::new_from(Some(t))
@@ -171,6 +187,50 @@ where
 {
     fn from(t: BTreeMap<K, LatticeElt<VD>>) -> Self {
         Self::new_from(t)
+    }
+}
+
+#[cfg(feature = "im")]
+impl<K: Ord + Clone, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
+    for LatticeElt<ArcOrdMapWithUnion<K, VD>>
+where
+    VD::T: Clone,
+{
+    fn from(t: ArcOrdMap<K, LatticeElt<VD>>) -> Self {
+        Self::new_from(t)
+    }
+}
+
+#[cfg(feature = "im")]
+impl<K: Ord + Clone, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
+    for LatticeElt<ArcOrdMapWithIntersection<K, VD>>
+where
+    VD::T: Clone,
+{
+    fn from(t: ArcOrdMap<K, LatticeElt<VD>>) -> Self {
+        Self::new_from(Some(t))
+    }
+}
+
+#[cfg(feature = "im-rc")]
+impl<K: Ord + Clone, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
+    for LatticeElt<RcOrdMapWithUnion<K, VD>>
+where
+    VD::T: Clone,
+{
+    fn from(t: RcOrdMap<K, LatticeElt<VD>>) -> Self {
+        Self::new_from(t)
+    }
+}
+
+#[cfg(feature = "im-rc")]
+impl<K: Ord + Clone, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
+    for LatticeElt<RcOrdMapWithIntersection<K, VD>>
+where
+    VD::T: Clone,
+{
+    fn from(t: RcOrdMap<K, LatticeElt<VD>>) -> Self {
+        Self::new_from(Some(t))
     }
 }
 
@@ -192,6 +252,34 @@ impl<U: Ord + Clone> From<BTreeSet<U>> for LatticeElt<BTreeSetWithUnion<U>> {
 
 impl<U: Ord + Clone> From<BTreeSet<U>> for LatticeElt<BTreeSetWithIntersection<U>> {
     fn from(t: BTreeSet<U>) -> Self {
+        Self::new_from(Some(t))
+    }
+}
+
+#[cfg(feature = "im")]
+impl<U: Ord + Clone> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithUnion<U>> {
+    fn from(t: ArcOrdSet<U>) -> Self {
+        Self::new_from(t)
+    }
+}
+
+#[cfg(feature = "im")]
+impl<U: Ord + Clone> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithIntersection<U>> {
+    fn from(t: ArcOrdSet<U>) -> Self {
+        Self::new_from(Some(t))
+    }
+}
+
+#[cfg(feature = "im-rc")]
+impl<U: Ord + Clone> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithUnion<U>> {
+    fn from(t: RcOrdSet<U>) -> Self {
+        Self::new_from(t)
+    }
+}
+
+#[cfg(feature = "im-rc")]
+impl<U: Ord + Clone> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithIntersection<U>> {
+    fn from(t: RcOrdSet<U>) -> Self {
         Self::new_from(Some(t))
     }
 }

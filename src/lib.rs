@@ -83,7 +83,20 @@ mod latticeelt;
 
 pub use latticedef::LatticeDef;
 pub use latticedef::{MaxUnitDefault,MaxUnitMinValue,MaxDef,MaxNum,MinOpt,MinNum};
+
+#[cfg(feature = "bit-set")]
 pub use latticedef::{BitSetWithUnion,BitSetWithIntersection};
+
+#[cfg(feature = "im")]
+pub use latticedef::{ArcOrdMapWithUnion,ArcOrdMapWithIntersection};
+#[cfg(feature = "im")]
+pub use latticedef::{ArcOrdSetWithUnion,ArcOrdSetWithIntersection};
+
+#[cfg(feature = "im-rc")]
+pub use latticedef::{RcOrdMapWithUnion,RcOrdMapWithIntersection};
+#[cfg(feature = "im-rc")]
+pub use latticedef::{RcOrdSetWithUnion,RcOrdSetWithIntersection};
+
 pub use latticedef::{BTreeSetWithUnion,BTreeSetWithIntersection};
 pub use latticedef::{BTreeMapWithUnion,BTreeMapWithIntersection};
 pub use latticedef::{Tuple2,Tuple3,Tuple4,Tuple5};
