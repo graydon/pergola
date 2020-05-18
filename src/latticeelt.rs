@@ -40,18 +40,15 @@ where
     }
 }
 
-impl<D: LatticeDef> LatticeDef for LatticeElt<D>
-{
+impl<D: LatticeDef> LatticeDef for LatticeElt<D> {
     type T = LatticeElt<D>;
     fn unit() -> Self::T {
         Self::default()
     }
-    fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T
-    {
+    fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
         lhs + rhs
     }
-    fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering>
-    {
+    fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
         D::partial_order(&lhs.value, &rhs.value)
     }
 }
@@ -313,4 +310,3 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef>
         Self::new_from(t)
     }
 }
-

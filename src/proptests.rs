@@ -2,12 +2,12 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::*;
+use bit_set::BitSet;
 use proptest::prelude::*;
 use proptest::{bits::bitset, collection, option, strategy::Just};
-use std::fmt::Debug;
-use std::collections::BTreeMap;
-use bit_set::BitSet;
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
 
 // Proptest stuff
 
@@ -70,7 +70,7 @@ fn prop_idem<D: LatticeDef>(case: &str, a: &LatticeElt<D>) -> Result<(), TestCas
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     println!("join-idempotence for {}", case);
     println!(
@@ -87,7 +87,7 @@ fn prop_unit<D: LatticeDef>(case: &str, a: &LatticeElt<D>) -> Result<(), TestCas
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     let u = &LatticeElt::<D>::default();
     println!("join-unit for {}", case);
@@ -109,7 +109,7 @@ fn prop_induced_order<D: LatticeDef>(
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     println!("join-induced order matches explicit order for {}", case);
     match a.partial_cmp(b) {
@@ -144,7 +144,7 @@ fn prop_order_refl<D: LatticeDef>(case: &str, a: &LatticeElt<D>) -> Result<(), T
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     println!("explicit order is reflexive for {}", case);
     println!(
@@ -165,7 +165,7 @@ fn prop_order_antisymm<D: LatticeDef>(
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     if a <= b && b <= a {
         println!("explicit order is antisymmetric for {}", case);
@@ -188,7 +188,7 @@ fn prop_order_trans<D: LatticeDef>(
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     if a <= b && b <= c {
         println!("explicit order is transitive for {}", case);
@@ -212,7 +212,7 @@ fn all_props<D: LatticeDef>(
 where
     D: Debug,
     D::T: Debug,
-LatticeElt<D>: Clone,
+    LatticeElt<D>: Clone,
 {
     prop_assoc(case, &a, &b, &c)?;
 

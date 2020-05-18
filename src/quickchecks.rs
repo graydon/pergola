@@ -3,8 +3,8 @@
 
 use super::*;
 use quickcheck::{quickcheck, Arbitrary, Gen};
-use std::fmt::Debug;
 use std::cmp::Ordering;
+use std::fmt::Debug;
 
 // Quickcheck stuff
 //

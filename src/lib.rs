@@ -82,24 +82,24 @@ mod latticedef;
 mod latticeelt;
 
 pub use latticedef::LatticeDef;
-pub use latticedef::{MaxUnitDefault,MaxUnitMinValue,MaxDef,MaxNum,MinOpt,MinNum};
+pub use latticedef::{MaxDef, MaxNum, MaxUnitDefault, MaxUnitMinValue, MinNum, MinOpt};
 
 #[cfg(feature = "bit-set")]
-pub use latticedef::{BitSetWithUnion,BitSetWithIntersection};
+pub use latticedef::{BitSetWithIntersection, BitSetWithUnion};
 
 #[cfg(feature = "im")]
-pub use latticedef::{ArcOrdMapWithUnion,ArcOrdMapWithIntersection};
+pub use latticedef::{ArcOrdMapWithIntersection, ArcOrdMapWithUnion};
 #[cfg(feature = "im")]
-pub use latticedef::{ArcOrdSetWithUnion,ArcOrdSetWithIntersection};
+pub use latticedef::{ArcOrdSetWithIntersection, ArcOrdSetWithUnion};
 
 #[cfg(feature = "im-rc")]
-pub use latticedef::{RcOrdMapWithUnion,RcOrdMapWithIntersection};
+pub use latticedef::{RcOrdMapWithIntersection, RcOrdMapWithUnion};
 #[cfg(feature = "im-rc")]
-pub use latticedef::{RcOrdSetWithUnion,RcOrdSetWithIntersection};
+pub use latticedef::{RcOrdSetWithIntersection, RcOrdSetWithUnion};
 
-pub use latticedef::{BTreeSetWithUnion,BTreeSetWithIntersection};
-pub use latticedef::{BTreeMapWithUnion,BTreeMapWithIntersection};
-pub use latticedef::{Tuple2,Tuple3,Tuple4,Tuple5};
+pub use latticedef::{BTreeMapWithIntersection, BTreeMapWithUnion};
+pub use latticedef::{BTreeSetWithIntersection, BTreeSetWithUnion};
+pub use latticedef::{Tuple2, Tuple3, Tuple4, Tuple5};
 
 pub use latticeelt::LatticeElt;
 
@@ -108,4 +108,3 @@ mod proptests;
 
 #[cfg(test)]
 mod quickchecks;
-

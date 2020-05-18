@@ -22,7 +22,6 @@ use im_rc::OrdMap as RcOrdMap;
 #[cfg(feature = "im-rc")]
 use im_rc::OrdSet as RcOrdSet;
 
-
 /// Implement this trait on a (typically vacuous) type to define a specific
 /// lattice as a type-with-some-choice-of-operators.
 pub trait LatticeDef {
@@ -254,7 +253,6 @@ impl LatticeDef for BitSetWithIntersection {
 
 macro_rules! impl_map_with_union {
     ($LDef:ident, $Map:ident) => {
-
         /// This is a lattice for maps that contain other lattices as
         /// values. The join operator takes the union of (key, value) pairs for
         /// keys present in only one map -- equivalent to an elementwise
@@ -325,7 +323,7 @@ macro_rules! impl_map_with_union {
                 }
             }
         }
-    }
+    };
 }
 
 impl_map_with_union!(BTreeMapWithUnion, BTreeMap);
@@ -441,7 +439,7 @@ macro_rules! impl_map_with_intersection {
                 }
             }
         }
-    }
+    };
 }
 
 impl_map_with_intersection!(BTreeMapWithIntersection, BTreeMap);
@@ -455,7 +453,6 @@ impl_map_with_intersection!(RcOrdMapWithIntersection, RcOrdMap);
 #[cfg(any(feature = "im", feature = "im-rc"))]
 macro_rules! impl_im_set_with_union {
     ($LDef:ident, $Set:ident) => {
-
         /// This is the same semantics as the `BitSetWithUnion` lattice, but
         /// covering sets of arbitrary ordered values.
         #[derive(Debug)]
@@ -482,7 +479,7 @@ macro_rules! impl_im_set_with_union {
                 }
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "im")]
@@ -521,7 +518,6 @@ impl<U: Clone + Ord> LatticeDef for BTreeSetWithUnion<U> {
 #[cfg(any(feature = "im", feature = "im-rc"))]
 macro_rules! impl_im_set_with_intersection {
     ($LDef:ident, $Set:ident) => {
-
         /// This is the same semantics as the `BitSetWithIntersection` lattice, but
         /// covering sets of arbitrary ordered values.
         #[derive(Debug)]
@@ -560,7 +556,7 @@ macro_rules! impl_im_set_with_intersection {
                 }
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "im")]
@@ -751,4 +747,3 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> 
         }
     }
 }
-
