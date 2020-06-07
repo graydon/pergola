@@ -57,8 +57,8 @@ assert!(!(v < u));  // bs_a1 is not a subset of bs_a2,
 assert!(v < w);     // However, w is a join and join unions
                     // the values at common keys, so v["a"] < w["a"].
 assert!(u < w);     // And likewise the other input to the join.
-assert_eq!(w.value["a"].value, BitSet::from_bytes(&[0b11111111]));
-assert_eq!(w.value["b"].value, BitSet::from_bytes(&[0b10101010]));
+assert_eq!(w.value["a"].value.0, BitSet::from_bytes(&[0b11111111]));
+assert_eq!(w.value["b"].value.0, BitSet::from_bytes(&[0b10101010]));
 ```
 
 # Name

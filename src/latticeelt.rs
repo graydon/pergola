@@ -2,13 +2,17 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::*;
+use crate::latticedef::DefTraits;
 use num_traits::bounds::Bounded;
 use std::cmp::{Eq, Ord, Ordering, PartialOrd};
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Add;
 
-#[cfg(feature = "bit-set")]
+#[cfg(feature = "bits")]
+use crate::latticedef::BitSetWrapper;
+
+#[cfg(feature = "bits")]
 use bit_set::BitSet;
 
 #[cfg(feature = "im")]
@@ -23,9 +27,19 @@ use im_rc::OrdMap as RcOrdMap;
 #[cfg(feature = "im-rc")]
 use im_rc::OrdSet as RcOrdSet;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize,Deserialize};
+
 /// Write code that _uses_ lattices over this type, and it will delegate
 /// to the functions of the parameter `LatticeDef`.
 
+#[cfg(feature = "serde")]
+#[derive(Debug,Serialize,Deserialize)]
+pub struct LatticeElt<D: LatticeDef> {
+    pub value: D::T,
+}
+
+#[cfg(not(feature = "serde"))]
 #[derive(Debug)]
 pub struct LatticeElt<D: LatticeDef> {
     pub value: D::T,
@@ -40,17 +54,14 @@ where
     }
 }
 
-impl<D: LatticeDef> LatticeDef for LatticeElt<D> {
-    type T = LatticeElt<D>;
-    fn unit() -> Self::T {
-        Self::default()
-    }
-    fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
-        lhs + rhs
-    }
-    fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
-        D::partial_order(&lhs.value, &rhs.value)
-    }
+/// Trait to extract the Def back out of a given LatticeElt.
+pub trait EltDef {
+    type Def : LatticeDef;
+}
+
+impl<D: LatticeDef> EltDef for LatticeElt<D>
+{
+    type Def = D;
 }
 
 impl<D: LatticeDef> Copy for LatticeElt<D> where D::T: Copy {}
@@ -139,45 +150,45 @@ impl<D: LatticeDef> LatticeElt<D> {
 // not smart enough to argue. But we can provide From<T> for each of the inner
 // types of the specific `LatticeDef`s we define in this crate, which is close
 // enough.
-impl<M: Ord + Clone + MaxUnitDefault> From<M> for LatticeElt<MaxDef<M>> {
+impl<M: DefTraits + MaxUnitDefault> From<M> for LatticeElt<MaxDef<M>> {
     fn from(t: M) -> Self {
         Self::new_from(t)
     }
 }
 
-impl<M: Ord + Clone + MaxUnitMinValue> From<M> for LatticeElt<MaxNum<M>> {
+impl<M: DefTraits + MaxUnitMinValue> From<M> for LatticeElt<MaxNum<M>> {
     fn from(t: M) -> Self {
         Self::new_from(t)
     }
 }
 
-impl<M: Ord + Clone> From<M> for LatticeElt<MinOpt<M>> {
+impl<M: DefTraits> From<M> for LatticeElt<MinOpt<M>> {
     fn from(t: M) -> Self {
         Self::new_from(Some(t))
     }
 }
 
-impl<M: Ord + Clone + Bounded> From<M> for LatticeElt<MinNum<M>> {
+impl<M: DefTraits + Bounded> From<M> for LatticeElt<MinNum<M>> {
     fn from(t: M) -> Self {
         Self::new_from(t)
     }
 }
 
-#[cfg(feature = "bit-set")]
+#[cfg(feature = "bits")]
 impl From<BitSet> for LatticeElt<BitSetWithUnion> {
     fn from(t: BitSet) -> Self {
-        Self::new_from(t)
+        Self::new_from(BitSetWrapper(t))
     }
 }
 
-#[cfg(feature = "bit-set")]
+#[cfg(feature = "bits")]
 impl From<BitSet> for LatticeElt<BitSetWithIntersection> {
     fn from(t: BitSet) -> Self {
-        Self::new_from(Some(t))
+        Self::new_from(Some(BitSetWrapper(t)))
     }
 }
 
-impl<K: Ord + Clone, VD: LatticeDef> From<BTreeMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<BTreeMap<K, LatticeElt<VD>>>
     for LatticeElt<BTreeMapWithUnion<K, VD>>
 where
     VD::T: Clone,
@@ -188,7 +199,7 @@ where
 }
 
 #[cfg(feature = "im")]
-impl<K: Ord + Clone, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
     for LatticeElt<ArcOrdMapWithUnion<K, VD>>
 where
     VD::T: Clone,
@@ -199,7 +210,7 @@ where
 }
 
 #[cfg(feature = "im")]
-impl<K: Ord + Clone, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<ArcOrdMap<K, LatticeElt<VD>>>
     for LatticeElt<ArcOrdMapWithIntersection<K, VD>>
 where
     VD::T: Clone,
@@ -210,7 +221,7 @@ where
 }
 
 #[cfg(feature = "im-rc")]
-impl<K: Ord + Clone, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
     for LatticeElt<RcOrdMapWithUnion<K, VD>>
 where
     VD::T: Clone,
@@ -221,7 +232,7 @@ where
 }
 
 #[cfg(feature = "im-rc")]
-impl<K: Ord + Clone, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<RcOrdMap<K, LatticeElt<VD>>>
     for LatticeElt<RcOrdMapWithIntersection<K, VD>>
 where
     VD::T: Clone,
@@ -231,7 +242,7 @@ where
     }
 }
 
-impl<K: Ord + Clone, VD: LatticeDef> From<BTreeMap<K, LatticeElt<VD>>>
+impl<K: DefTraits, VD: LatticeDef> From<BTreeMap<K, LatticeElt<VD>>>
     for LatticeElt<BTreeMapWithIntersection<K, VD>>
 where
     VD::T: Clone,
@@ -241,41 +252,41 @@ where
     }
 }
 
-impl<U: Ord + Clone> From<BTreeSet<U>> for LatticeElt<BTreeSetWithUnion<U>> {
+impl<U: DefTraits> From<BTreeSet<U>> for LatticeElt<BTreeSetWithUnion<U>> {
     fn from(t: BTreeSet<U>) -> Self {
         Self::new_from(t)
     }
 }
 
-impl<U: Ord + Clone> From<BTreeSet<U>> for LatticeElt<BTreeSetWithIntersection<U>> {
+impl<U: DefTraits> From<BTreeSet<U>> for LatticeElt<BTreeSetWithIntersection<U>> {
     fn from(t: BTreeSet<U>) -> Self {
         Self::new_from(Some(t))
     }
 }
 
 #[cfg(feature = "im")]
-impl<U: Ord + Clone> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithUnion<U>> {
+impl<U: DefTraits> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithUnion<U>> {
     fn from(t: ArcOrdSet<U>) -> Self {
         Self::new_from(t)
     }
 }
 
 #[cfg(feature = "im")]
-impl<U: Ord + Clone> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithIntersection<U>> {
+impl<U: DefTraits> From<ArcOrdSet<U>> for LatticeElt<ArcOrdSetWithIntersection<U>> {
     fn from(t: ArcOrdSet<U>) -> Self {
         Self::new_from(Some(t))
     }
 }
 
 #[cfg(feature = "im-rc")]
-impl<U: Ord + Clone> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithUnion<U>> {
+impl<U: DefTraits> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithUnion<U>> {
     fn from(t: RcOrdSet<U>) -> Self {
         Self::new_from(t)
     }
 }
 
 #[cfg(feature = "im-rc")]
-impl<U: Ord + Clone> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithIntersection<U>> {
+impl<U: DefTraits> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithIntersection<U>> {
     fn from(t: RcOrdSet<U>) -> Self {
         Self::new_from(Some(t))
     }

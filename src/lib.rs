@@ -60,8 +60,8 @@ assert!(!(v < u));  // bs_a1 is not a subset of bs_a2,
 assert!(v < w);     // However, w is a join and join unions
                     // the values at common keys, so v["a"] < w["a"].
 assert!(u < w);     // And likewise the other input to the join.
-assert_eq!(w.value["a"].value, BitSet::from_bytes(&[0b11111111]));
-assert_eq!(w.value["b"].value, BitSet::from_bytes(&[0b10101010]));
+assert_eq!(w.value["a"].value.0, BitSet::from_bytes(&[0b11111111]));
+assert_eq!(w.value["b"].value.0, BitSet::from_bytes(&[0b10101010]));
 ```
 
 # Name
@@ -81,11 +81,11 @@ sturdy open lattice, often upon which woody vines are trained.
 mod latticedef;
 mod latticeelt;
 
-pub use latticedef::LatticeDef;
+pub use latticedef::{DefTraits, ValTraits, LatticeDef};
 pub use latticedef::{MaxDef, MaxNum, MaxUnitDefault, MaxUnitMinValue, MinNum, MinOpt};
 
 #[cfg(feature = "bit-set")]
-pub use latticedef::{BitSetWithIntersection, BitSetWithUnion};
+pub use latticedef::{BitSetWithIntersection, BitSetWithUnion, BitSetWrapper};
 
 #[cfg(feature = "im")]
 pub use latticedef::{ArcOrdMapWithIntersection, ArcOrdMapWithUnion};
@@ -101,7 +101,7 @@ pub use latticedef::{BTreeMapWithIntersection, BTreeMapWithUnion};
 pub use latticedef::{BTreeSetWithIntersection, BTreeSetWithUnion};
 pub use latticedef::{Tuple2, Tuple3, Tuple4, Tuple5};
 
-pub use latticeelt::LatticeElt;
+pub use latticeelt::{LatticeElt,EltDef};
 
 #[cfg(test)]
 mod proptests;

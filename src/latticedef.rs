@@ -5,9 +5,14 @@ use super::LatticeElt;
 use num_traits::bounds::Bounded;
 use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::marker::PhantomData;
 
-#[cfg(feature = "bit-set")]
+#[cfg(feature = "bits")]
+use bit_vec::BitVec;
+
+#[cfg(feature = "bits")]
 use bit_set::BitSet;
 
 #[cfg(feature = "im")]
@@ -22,10 +27,68 @@ use im_rc::OrdMap as RcOrdMap;
 #[cfg(feature = "im-rc")]
 use im_rc::OrdSet as RcOrdSet;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize,Deserialize,de::DeserializeOwned};
+
+/// `DefTraits` is used to constrain `LatticeDef`s and also type parameters of
+/// structs that implement `LatticeDef`. This requires some explaining.
+///
+/// A `LatticeDef` is typically just a unit-struct with no content aside from
+/// `PhantomData` -- it's essentially a module to be used as a parameter to a
+/// `LatticeElt` -- so it doesn't obviously make sense to constrain them at
+/// all.
+///
+/// But: since `LatticeDef`s wind up as type parameters for a variety of structs
+/// in client libraries (that themselves contain `LatticeElt`s that use those
+/// `LatticeDef`s), any attempt to derive standard traits on such _structs_ will
+/// bump into a bug in derive -- https://github.com/rust-lang/rust/issues/26925
+/// -- which prevents derived impls from working right if a struct's type
+/// parameters don't themselves implement the derived traits.
+///
+/// So to keep derive working downstream, we insist all `LatticeDef`s provide
+/// most standard derivable traits. Impls for them can be derived _on_ the
+/// `LatticeDef`s trivially anyways, so this isn't much of a burden.
+
+// The first (trait) part of this definition is a "necessary" condition to be DefTraits.
+// Any time you want to be DefTraits, you must at least meet the given sum of traits.
+#[cfg(feature = "serde")]
+pub trait DefTraits : Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned {}
+
+#[cfg(not(feature = "serde"))]
+pub trait DefTraits : Debug +Ord + Clone + Hash + Default {}
+
+// The second (impl) part of this definition is a "sufficient" condition to be DefTraits.
+// Any time you meet the given sum of traits, that's sufficient to be DefTraits.
+#[cfg(feature = "serde")]
+impl<T:Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned> DefTraits for T {}
+
+#[cfg(not(feature = "serde"))]
+impl<T:Debug + Ord + Clone + Hash + Default> DefTraits for T {}
+
+/// `ValTraits` is used to constrain the `LatticeDef::T` types to include basic
+/// assumptions we need all datatypes to support. But notably not `Ord`! While
+/// several `LatticeDef` type parameters do require `Ord` (which is because of
+/// the the deriving-bug workaround described in the docs of `DefTraits`) the
+/// _partial_ orders of the lattice are separate and defined by the
+/// `LatticeDef`s themselves, and several important `LatticeDef::T` types are
+/// not totally ordered at all (namely all the set-like and map-like ones).
+
+#[cfg(feature = "serde")]
+pub trait ValTraits : Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned {}
+
+#[cfg(not(feature = "serde"))]
+pub trait ValTraits : Debug + Eq + Clone + Hash + Default {}
+
+#[cfg(feature = "serde")]
+impl<T:Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned> ValTraits for T {}
+
+#[cfg(not(feature = "serde"))]
+impl<T:Debug + Eq + Clone + Hash + Default> ValTraits for T {}
+
 /// Implement this trait on a (typically vacuous) type to define a specific
 /// lattice as a type-with-some-choice-of-operators.
-pub trait LatticeDef {
-    type T;
+pub trait LatticeDef : DefTraits {
+    type T : ValTraits;
     fn unit() -> Self::T;
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T;
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering>;
@@ -67,11 +130,17 @@ impl MaxUnitMinValue for i128 {}
 /// element type, as well as either `Default::default` as its unit. In other
 /// words this is the "most normal" lattice over unsigned scalar, vector or
 /// string types, probably the one you want most of the time.
-#[derive(Debug)]
-pub struct MaxDef<M> {
+#[cfg(feature = "serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct MaxDef<M: DefTraits> {
     phantom: PhantomData<M>,
 }
-impl<M: Ord + Clone + MaxUnitDefault> LatticeDef for MaxDef<M> {
+#[cfg(not(feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct MaxDef<M: DefTraits> {
+    phantom: PhantomData<M>,
+}
+impl<M: DefTraits + MaxUnitDefault> LatticeDef for MaxDef<M> {
     type T = M;
     fn unit() -> Self::T {
         M::default()
@@ -87,11 +156,17 @@ impl<M: Ord + Clone + MaxUnitDefault> LatticeDef for MaxDef<M> {
 /// This lattice definition recycles the `Ord::max` and `Ord::cmp` of its
 /// element type, as well as `Bounded::min_value` as its unit. This is
 /// similar to `MaxDef` except it works with signed types.
-#[derive(Debug)]
-pub struct MaxNum<M> {
+#[cfg(feature = "serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct MaxNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
-impl<M: Ord + Clone + MaxUnitMinValue> LatticeDef for MaxNum<M> {
+#[cfg(not(feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct MaxNum<M: DefTraits> {
+    phantom: PhantomData<M>,
+}
+impl<M: DefTraits + MaxUnitMinValue> LatticeDef for MaxNum<M> {
     type T = M;
     fn unit() -> Self::T {
         M::min_value()
@@ -115,11 +190,17 @@ impl<M: Ord + Clone + MaxUnitMinValue> LatticeDef for MaxNum<M> {
 /// element. For example this will make the unit of u32 still be None, not
 /// u32::MAX. For those, use MinNum. Both are _safe_, but MinOpt is weird in
 /// those cases.
-#[derive(Debug)]
-pub struct MinOpt<M> {
+#[cfg(feature = "serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct MinOpt<M: DefTraits> {
     phantom: PhantomData<M>,
 }
-impl<M: Ord + Clone> LatticeDef for MinOpt<M> {
+#[cfg(not(feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct MinOpt<M: DefTraits> {
+    phantom: PhantomData<M>,
+}
+impl<M: DefTraits> LatticeDef for MinOpt<M> {
     type T = Option<M>;
     fn unit() -> Self::T {
         None
@@ -152,11 +233,17 @@ impl<M: Ord + Clone> LatticeDef for MinOpt<M> {
 /// that have a numeric upper bound: it uses that as the unit rather than
 /// the additional "maximal value" tacked on in `MinOpt`. Best option for
 /// numeric lattices with join as minimum.
-#[derive(Debug)]
-pub struct MinNum<M> {
+#[cfg(feature = "serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct MinNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
-impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
+#[cfg(not(feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct MinNum<M: DefTraits> {
+    phantom: PhantomData<M>,
+}
+impl<M: DefTraits + Bounded> LatticeDef for MinNum<M> {
     type T = M;
     fn unit() -> Self::T {
         M::max_value()
@@ -169,6 +256,37 @@ impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
     }
 }
 
+/// Wrap a BitSet in a newtype so we can implement serde traits on it
+/// (weirdly by delegating _to_ its inner BitVec).
+#[cfg(feature = "bits")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct BitSetWrapper(pub BitSet);
+
+#[cfg(all(feature = "bits", feature = "serde"))]
+impl Serialize for BitSetWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        self.0.get_ref().serialize(serializer)
+    }
+}
+
+#[cfg(all(feature = "bits", feature = "serde"))]
+impl<'a> Deserialize<'a> for BitSetWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'a>,
+    {
+        let v = BitVec::deserialize(deserializer);
+        match v {
+            Ok(bv) => Ok(BitSetWrapper(BitSet::from_bit_vec(bv))),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+
 /// This lattice is a standard bitset-with-union.
 ///
 /// Note: you _could_ use a `BitSet` in the `MaxStd` or `MinOpt` lattices
@@ -178,25 +296,29 @@ impl<M: Ord + Clone + Bounded> LatticeDef for MinNum<M> {
 /// rather than set-theoretic sub/superset relation (which is only a partial
 /// order), and of course joining by max (or min) of that order will not produce
 /// a union (or intersection) as one would want.
-#[cfg(feature = "bit-set")]
-#[derive(Debug)]
+#[cfg(all(feature = "bits", feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
 pub struct BitSetWithUnion;
 
-#[cfg(feature = "bit-set")]
+#[cfg(all(feature = "bits", not(feature = "serde")))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct BitSetWithUnion;
+
+#[cfg(feature = "bits")]
 impl LatticeDef for BitSetWithUnion {
-    type T = BitSet;
+    type T = BitSetWrapper;
     fn unit() -> Self::T {
-        BitSet::default()
+        BitSetWrapper(BitSet::default())
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
-        lhs.union(rhs).collect()
+        BitSetWrapper(lhs.0.union(&rhs.0).collect())
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
-        if lhs == rhs {
+        if lhs.0 == rhs.0 {
             Some(Ordering::Equal)
-        } else if lhs.is_subset(rhs) {
+        } else if lhs.0.is_subset(&rhs.0) {
             Some(Ordering::Less)
-        } else if lhs.is_superset(rhs) {
+        } else if lhs.0.is_superset(&rhs.0) {
             Some(Ordering::Greater)
         } else {
             None
@@ -213,13 +335,17 @@ impl LatticeDef for BitSetWithUnion {
 /// `Bitset`) as well as a join that inverts the typical order of a set-valued
 /// lattice, taking set-intersections from the "maximal" unit upwards towards
 /// the empty set (at the top of the lattice).
-#[cfg(feature = "bit-set")]
-#[derive(Debug)]
+#[cfg(all(feature = "bits", feature = "serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
 pub struct BitSetWithIntersection;
 
-#[cfg(feature = "bit-set")]
+#[cfg(all(feature = "bits", not(feature = "serde")))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct BitSetWithIntersection;
+
+#[cfg(feature = "bits")]
 impl LatticeDef for BitSetWithIntersection {
-    type T = Option<BitSet>;
+    type T = Option<BitSetWrapper>;
     fn unit() -> Self::T {
         None
     }
@@ -228,7 +354,7 @@ impl LatticeDef for BitSetWithIntersection {
             (None, None) => None,
             (None, Some(_)) => rhs.clone(),
             (Some(_), None) => lhs.clone(),
-            (Some(a), Some(b)) => Some(a.intersection(b).collect()),
+            (Some(a), Some(b)) => Some(BitSetWrapper(a.0.intersection(&b.0).collect())),
         }
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
@@ -237,11 +363,11 @@ impl LatticeDef for BitSetWithIntersection {
             (None, Some(_)) => Some(Ordering::Less),
             (Some(_), None) => Some(Ordering::Greater),
             (Some(a), Some(b)) => {
-                if a == b {
+                if a.0 == b.0 {
                     Some(Ordering::Equal)
-                } else if a.is_subset(b) {
+                } else if a.0.is_subset(&b.0) {
                     Some(Ordering::Greater)
-                } else if a.is_superset(b) {
+                } else if b.0.is_subset(&a.0) {
                     Some(Ordering::Less)
                 } else {
                     None
@@ -263,12 +389,19 @@ macro_rules! impl_map_with_union {
         /// maps in favour of the join-induced partial order: a subset relation
         /// extended with the lattice orders of the values when the same key is
         /// present in both maps.
-        #[derive(Debug)]
-        pub struct $LDef<K: Ord + Clone, VD: LatticeDef> {
+        #[cfg(feature="serde")]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
         }
-        impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for $LDef<K, VD>
+        #[cfg(not(feature="serde"))]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        pub struct $LDef<K: DefTraits, VD: LatticeDef> {
+            phantom1: PhantomData<K>,
+            phantom2: PhantomData<VD>,
+        }
+        impl<K: DefTraits, VD: LatticeDef> LatticeDef for $LDef<K, VD>
         where
             VD::T: Clone,
         {
@@ -341,13 +474,19 @@ macro_rules! impl_map_with_intersection {
         /// intersection. Maps are represented as `Option<BTreeMap>` and the
         /// unit is again a putative "maximum" map-with-all-possible-keys
         /// (represented by `None`).
-        #[derive(Debug)]
-        pub struct $LDef<K: Ord + Clone, VD: LatticeDef> {
+        #[cfg(feature="serde")]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
         }
-
-        impl<K: Ord + Clone, VD: LatticeDef> LatticeDef for $LDef<K, VD>
+        #[cfg(not(feature="serde"))]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        pub struct $LDef<K: DefTraits, VD: LatticeDef> {
+            phantom1: PhantomData<K>,
+            phantom2: PhantomData<VD>,
+        }
+        impl<K: DefTraits, VD: LatticeDef> LatticeDef for $LDef<K, VD>
         where
             VD::T: Clone,
         {
@@ -455,11 +594,17 @@ macro_rules! impl_im_set_with_union {
     ($LDef:ident, $Set:ident) => {
         /// This is the same semantics as the `BitSetWithUnion` lattice, but
         /// covering sets of arbitrary ordered values.
-        #[derive(Debug)]
-        pub struct $LDef<U: Clone + Ord> {
+        #[cfg(feature="serde")]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
-        impl<U: Clone + Ord> LatticeDef for $LDef<U> {
+        #[cfg(not(feature="serde"))]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        pub struct $LDef<U: DefTraits> {
+            phantom: PhantomData<U>,
+        }
+        impl<U: DefTraits> LatticeDef for $LDef<U> {
             type T = $Set<U>;
             fn unit() -> Self::T {
                 $Set::default()
@@ -490,11 +635,17 @@ impl_im_set_with_union!(RcOrdSetWithUnion, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithUnion` lattice, but covering
 /// sets of arbitrary ordered values.
-#[derive(Debug)]
-pub struct BTreeSetWithUnion<U: Clone + Ord> {
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct BTreeSetWithUnion<U: DefTraits> {
     phantom: PhantomData<U>,
 }
-impl<U: Clone + Ord> LatticeDef for BTreeSetWithUnion<U> {
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct BTreeSetWithUnion<U: DefTraits> {
+    phantom: PhantomData<U>,
+}
+impl<U: DefTraits> LatticeDef for BTreeSetWithUnion<U> {
     type T = BTreeSet<U>;
     fn unit() -> Self::T {
         BTreeSet::default()
@@ -520,11 +671,17 @@ macro_rules! impl_im_set_with_intersection {
     ($LDef:ident, $Set:ident) => {
         /// This is the same semantics as the `BitSetWithIntersection` lattice, but
         /// covering sets of arbitrary ordered values.
-        #[derive(Debug)]
-        pub struct $LDef<U: Clone + Ord> {
+        #[cfg(feature="serde")]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
-        impl<U: Clone + Ord> LatticeDef for $LDef<U> {
+        #[cfg(not(feature="serde"))]
+        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        pub struct $LDef<U: DefTraits> {
+            phantom: PhantomData<U>,
+        }
+        impl<U: DefTraits> LatticeDef for $LDef<U> {
             type T = Option<$Set<U>>;
             fn unit() -> Self::T {
                 None
@@ -567,11 +724,17 @@ impl_im_set_with_intersection!(RcOrdSetWithIntersection, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithIntersection` lattice, but
 /// covering sets of arbitrary ordered values.
-#[derive(Debug)]
-pub struct BTreeSetWithIntersection<U: Clone + Ord> {
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct BTreeSetWithIntersection<U: DefTraits> {
     phantom: PhantomData<U>,
 }
-impl<U: Clone + Ord> LatticeDef for BTreeSetWithIntersection<U> {
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+pub struct BTreeSetWithIntersection<U: DefTraits> {
+    phantom: PhantomData<U>,
+}
+impl<U: DefTraits> LatticeDef for BTreeSetWithIntersection<U> {
     type T = Option<BTreeSet<U>>;
     fn unit() -> Self::T {
         None
@@ -610,7 +773,14 @@ impl<U: Clone + Ord> LatticeDef for BTreeSetWithIntersection<U> {
 ///
 /// If you need more than 5-element tuples, maybe just nest these (or submit a
 /// pull request).
-#[derive(Debug)]
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
+    phantom1: PhantomData<A>,
+    phantom2: PhantomData<B>,
+}
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
 pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -635,7 +805,15 @@ impl<A: LatticeDef, B: LatticeDef> LatticeDef for Tuple2<A, B> {
     }
 }
 
-#[derive(Debug)]
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
+    phantom1: PhantomData<A>,
+    phantom2: PhantomData<B>,
+    phantom3: PhantomData<C>,
+}
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
 pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -665,7 +843,16 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C>
     }
 }
 
-#[derive(Debug)]
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
+    phantom1: PhantomData<A>,
+    phantom2: PhantomData<B>,
+    phantom3: PhantomData<C>,
+    phantom4: PhantomData<D>,
+}
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
 pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -702,7 +889,17 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for 
     }
 }
 
-#[derive(Debug)]
+#[cfg(feature="serde")]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
+    phantom1: PhantomData<A>,
+    phantom2: PhantomData<B>,
+    phantom3: PhantomData<C>,
+    phantom4: PhantomData<D>,
+    phantom5: PhantomData<E>,
+}
+#[cfg(not(feature="serde"))]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
 pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,

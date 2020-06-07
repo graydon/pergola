@@ -2,9 +2,17 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::*;
+#[cfg(feature="bits")]
 use bit_set::BitSet;
+
+#[cfg(feature="bits")]
+use crate::latticedef::BitSetWrapper;
+
+#[cfg(feature="bits")]
+use proptest::bits::bitset;
+
 use proptest::prelude::*;
-use proptest::{bits::bitset, collection, option, strategy::Just};
+use proptest::{collection, option, strategy::Just};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -253,6 +261,7 @@ where
     Ok(())
 }
 
+#[cfg(feature="bits")]
 prop_compose! {
     // This generates triples of bitsets that have a mix of
     // relationship and non-relationship to one another.
@@ -288,6 +297,7 @@ prop_compose! {
     }
 }
 
+#[cfg(feature="bits")]
 prop_compose! {
     fn arb_three_bitsets_with_union()
         ((a, b, c) in arb_three_bitsets())
@@ -296,10 +306,11 @@ prop_compose! {
              LatticeElt<BitSetWithUnion>)
     {
         type E = LatticeElt<BitSetWithUnion>;
-        (E::new_from(a), E::new_from(b), E::new_from(c))
+        (E::from(a), E::from(b), E::from(c))
     }
 }
 
+#[cfg(feature="bits")]
 prop_compose! {
     fn arb_three_bitsets_with_intersection()
         ((x, y, z) in arb_three_bitsets())
@@ -311,7 +322,9 @@ prop_compose! {
              LatticeElt<BitSetWithIntersection>)
     {
         type E = LatticeElt<BitSetWithIntersection>;
-        (E{value:a}, E{value:b}, E{value:c})
+        (E{value:a.map(|x| BitSetWrapper(x))},
+         E{value:b.map(|x| BitSetWrapper(x))},
+         E{value:c.map(|x| BitSetWrapper(x))})
     }
 }
 
