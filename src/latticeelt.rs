@@ -28,13 +28,13 @@ use im_rc::OrdMap as RcOrdMap;
 use im_rc::OrdSet as RcOrdSet;
 
 #[cfg(feature = "serde")]
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Write code that _uses_ lattices over this type, and it will delegate
 /// to the functions of the parameter `LatticeDef`.
 
 #[cfg(feature = "serde")]
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LatticeElt<D: LatticeDef> {
     pub value: D::T,
 }
@@ -56,11 +56,10 @@ where
 
 /// Trait to extract the Def back out of a given LatticeElt.
 pub trait EltDef {
-    type Def : LatticeDef;
+    type Def: LatticeDef;
 }
 
-impl<D: LatticeDef> EltDef for LatticeElt<D>
-{
+impl<D: LatticeDef> EltDef for LatticeElt<D> {
     type Def = D;
 }
 

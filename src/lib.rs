@@ -81,7 +81,7 @@ sturdy open lattice, often upon which woody vines are trained.
 mod latticedef;
 mod latticeelt;
 
-pub use latticedef::{DefTraits, ValTraits, LatticeDef};
+pub use latticedef::{DefTraits, LatticeDef, ValTraits};
 pub use latticedef::{MaxDef, MaxNum, MaxUnitDefault, MaxUnitMinValue, MinNum, MinOpt};
 
 #[cfg(feature = "bit-set")]
@@ -101,7 +101,7 @@ pub use latticedef::{BTreeMapWithIntersection, BTreeMapWithUnion};
 pub use latticedef::{BTreeSetWithIntersection, BTreeSetWithUnion};
 pub use latticedef::{Tuple2, Tuple3, Tuple4, Tuple5};
 
-pub use latticeelt::{LatticeElt,EltDef};
+pub use latticeelt::{EltDef, LatticeElt};
 
 #[cfg(test)]
 mod proptests;

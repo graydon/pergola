@@ -28,7 +28,7 @@ use im_rc::OrdMap as RcOrdMap;
 use im_rc::OrdSet as RcOrdSet;
 
 #[cfg(feature = "serde")]
-use serde::{Serialize,Deserialize,de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// `DefTraits` is used to constrain `LatticeDef`s and also type parameters of
 /// structs that implement `LatticeDef`. This requires some explaining.
@@ -52,18 +52,18 @@ use serde::{Serialize,Deserialize,de::DeserializeOwned};
 // The first (trait) part of this definition is a "necessary" condition to be DefTraits.
 // Any time you want to be DefTraits, you must at least meet the given sum of traits.
 #[cfg(feature = "serde")]
-pub trait DefTraits : Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned {}
+pub trait DefTraits: Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned {}
 
 #[cfg(not(feature = "serde"))]
-pub trait DefTraits : Debug +Ord + Clone + Hash + Default {}
+pub trait DefTraits: Debug + Ord + Clone + Hash + Default {}
 
 // The second (impl) part of this definition is a "sufficient" condition to be DefTraits.
 // Any time you meet the given sum of traits, that's sufficient to be DefTraits.
 #[cfg(feature = "serde")]
-impl<T:Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned> DefTraits for T {}
+impl<T: Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned> DefTraits for T {}
 
 #[cfg(not(feature = "serde"))]
-impl<T:Debug + Ord + Clone + Hash + Default> DefTraits for T {}
+impl<T: Debug + Ord + Clone + Hash + Default> DefTraits for T {}
 
 /// `ValTraits` is used to constrain the `LatticeDef::T` types to include basic
 /// assumptions we need all datatypes to support. But notably not `Ord`! While
@@ -74,21 +74,21 @@ impl<T:Debug + Ord + Clone + Hash + Default> DefTraits for T {}
 /// not totally ordered at all (namely all the set-like and map-like ones).
 
 #[cfg(feature = "serde")]
-pub trait ValTraits : Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned {}
+pub trait ValTraits: Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned {}
 
 #[cfg(not(feature = "serde"))]
-pub trait ValTraits : Debug + Eq + Clone + Hash + Default {}
+pub trait ValTraits: Debug + Eq + Clone + Hash + Default {}
 
 #[cfg(feature = "serde")]
-impl<T:Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned> ValTraits for T {}
+impl<T: Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned> ValTraits for T {}
 
 #[cfg(not(feature = "serde"))]
-impl<T:Debug + Eq + Clone + Hash + Default> ValTraits for T {}
+impl<T: Debug + Eq + Clone + Hash + Default> ValTraits for T {}
 
 /// Implement this trait on a (typically vacuous) type to define a specific
 /// lattice as a type-with-some-choice-of-operators.
-pub trait LatticeDef : DefTraits {
-    type T : ValTraits;
+pub trait LatticeDef: DefTraits {
+    type T: ValTraits;
     fn unit() -> Self::T;
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T;
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering>;
@@ -131,12 +131,12 @@ impl MaxUnitMinValue for i128 {}
 /// words this is the "most normal" lattice over unsigned scalar, vector or
 /// string types, probably the one you want most of the time.
 #[cfg(feature = "serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MaxDef<M: DefTraits> {
     phantom: PhantomData<M>,
 }
 #[cfg(not(feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct MaxDef<M: DefTraits> {
     phantom: PhantomData<M>,
 }
@@ -157,12 +157,12 @@ impl<M: DefTraits + MaxUnitDefault> LatticeDef for MaxDef<M> {
 /// element type, as well as `Bounded::min_value` as its unit. This is
 /// similar to `MaxDef` except it works with signed types.
 #[cfg(feature = "serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MaxNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
 #[cfg(not(feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct MaxNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
@@ -191,12 +191,12 @@ impl<M: DefTraits + MaxUnitMinValue> LatticeDef for MaxNum<M> {
 /// u32::MAX. For those, use MinNum. Both are _safe_, but MinOpt is weird in
 /// those cases.
 #[cfg(feature = "serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MinOpt<M: DefTraits> {
     phantom: PhantomData<M>,
 }
 #[cfg(not(feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct MinOpt<M: DefTraits> {
     phantom: PhantomData<M>,
 }
@@ -234,12 +234,12 @@ impl<M: DefTraits> LatticeDef for MinOpt<M> {
 /// the additional "maximal value" tacked on in `MinOpt`. Best option for
 /// numeric lattices with join as minimum.
 #[cfg(feature = "serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MinNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
 #[cfg(not(feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct MinNum<M: DefTraits> {
     phantom: PhantomData<M>,
 }
@@ -259,7 +259,7 @@ impl<M: DefTraits + Bounded> LatticeDef for MinNum<M> {
 /// Wrap a BitSet in a newtype so we can implement serde traits on it
 /// (weirdly by delegating _to_ its inner BitVec).
 #[cfg(feature = "bits")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BitSetWrapper(pub BitSet);
 
 #[cfg(all(feature = "bits", feature = "serde"))]
@@ -281,11 +281,10 @@ impl<'a> Deserialize<'a> for BitSetWrapper {
         let v = BitVec::deserialize(deserializer);
         match v {
             Ok(bv) => Ok(BitSetWrapper(BitSet::from_bit_vec(bv))),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 }
-
 
 /// This lattice is a standard bitset-with-union.
 ///
@@ -297,11 +296,11 @@ impl<'a> Deserialize<'a> for BitSetWrapper {
 /// order), and of course joining by max (or min) of that order will not produce
 /// a union (or intersection) as one would want.
 #[cfg(all(feature = "bits", feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct BitSetWithUnion;
 
 #[cfg(all(feature = "bits", not(feature = "serde")))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BitSetWithUnion;
 
 #[cfg(feature = "bits")]
@@ -336,11 +335,11 @@ impl LatticeDef for BitSetWithUnion {
 /// lattice, taking set-intersections from the "maximal" unit upwards towards
 /// the empty set (at the top of the lattice).
 #[cfg(all(feature = "bits", feature = "serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct BitSetWithIntersection;
 
 #[cfg(all(feature = "bits", not(feature = "serde")))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BitSetWithIntersection;
 
 #[cfg(feature = "bits")]
@@ -389,14 +388,16 @@ macro_rules! impl_map_with_union {
         /// maps in favour of the join-induced partial order: a subset relation
         /// extended with the lattice orders of the values when the same key is
         /// present in both maps.
-        #[cfg(feature="serde")]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        #[cfg(feature = "serde")]
+        #[derive(
+            Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize,
+        )]
         pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
         }
-        #[cfg(not(feature="serde"))]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        #[cfg(not(feature = "serde"))]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
         pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
@@ -474,14 +475,16 @@ macro_rules! impl_map_with_intersection {
         /// intersection. Maps are represented as `Option<BTreeMap>` and the
         /// unit is again a putative "maximum" map-with-all-possible-keys
         /// (represented by `None`).
-        #[cfg(feature="serde")]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        #[cfg(feature = "serde")]
+        #[derive(
+            Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize,
+        )]
         pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
         }
-        #[cfg(not(feature="serde"))]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        #[cfg(not(feature = "serde"))]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
         pub struct $LDef<K: DefTraits, VD: LatticeDef> {
             phantom1: PhantomData<K>,
             phantom2: PhantomData<VD>,
@@ -594,13 +597,15 @@ macro_rules! impl_im_set_with_union {
     ($LDef:ident, $Set:ident) => {
         /// This is the same semantics as the `BitSetWithUnion` lattice, but
         /// covering sets of arbitrary ordered values.
-        #[cfg(feature="serde")]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        #[cfg(feature = "serde")]
+        #[derive(
+            Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize,
+        )]
         pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
-        #[cfg(not(feature="serde"))]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        #[cfg(not(feature = "serde"))]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
         pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
@@ -635,13 +640,13 @@ impl_im_set_with_union!(RcOrdSetWithUnion, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithUnion` lattice, but covering
 /// sets of arbitrary ordered values.
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct BTreeSetWithUnion<U: DefTraits> {
     phantom: PhantomData<U>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BTreeSetWithUnion<U: DefTraits> {
     phantom: PhantomData<U>,
 }
@@ -671,13 +676,15 @@ macro_rules! impl_im_set_with_intersection {
     ($LDef:ident, $Set:ident) => {
         /// This is the same semantics as the `BitSetWithIntersection` lattice, but
         /// covering sets of arbitrary ordered values.
-        #[cfg(feature="serde")]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+        #[cfg(feature = "serde")]
+        #[derive(
+            Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize,
+        )]
         pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
-        #[cfg(not(feature="serde"))]
-        #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+        #[cfg(not(feature = "serde"))]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
         pub struct $LDef<U: DefTraits> {
             phantom: PhantomData<U>,
         }
@@ -724,13 +731,13 @@ impl_im_set_with_intersection!(RcOrdSetWithIntersection, RcOrdSet);
 
 /// This is the same semantics as the `BitSetWithIntersection` lattice, but
 /// covering sets of arbitrary ordered values.
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct BTreeSetWithIntersection<U: DefTraits> {
     phantom: PhantomData<U>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BTreeSetWithIntersection<U: DefTraits> {
     phantom: PhantomData<U>,
 }
@@ -773,14 +780,14 @@ impl<U: DefTraits> LatticeDef for BTreeSetWithIntersection<U> {
 ///
 /// If you need more than 5-element tuples, maybe just nest these (or submit a
 /// pull request).
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -805,15 +812,15 @@ impl<A: LatticeDef, B: LatticeDef> LatticeDef for Tuple2<A, B> {
     }
 }
 
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
     phantom3: PhantomData<C>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -843,16 +850,16 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C>
     }
 }
 
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
     phantom3: PhantomData<C>,
     phantom4: PhantomData<D>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -889,8 +896,8 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for 
     }
 }
 
-#[cfg(feature="serde")]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default,Serialize,Deserialize)]
+#[cfg(feature = "serde")]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,
@@ -898,8 +905,8 @@ pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E:
     phantom4: PhantomData<D>,
     phantom5: PhantomData<E>,
 }
-#[cfg(not(feature="serde"))]
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Hash,Default)]
+#[cfg(not(feature = "serde"))]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
     phantom1: PhantomData<A>,
     phantom2: PhantomData<B>,

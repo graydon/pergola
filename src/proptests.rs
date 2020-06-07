@@ -2,13 +2,13 @@
 // Licensed under the MIT and Apache-2.0 licenses.
 
 use super::*;
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 use bit_set::BitSet;
 
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 use crate::latticedef::BitSetWrapper;
 
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 use proptest::bits::bitset;
 
 use proptest::prelude::*;
@@ -261,7 +261,7 @@ where
     Ok(())
 }
 
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 prop_compose! {
     // This generates triples of bitsets that have a mix of
     // relationship and non-relationship to one another.
@@ -297,7 +297,7 @@ prop_compose! {
     }
 }
 
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 prop_compose! {
     fn arb_three_bitsets_with_union()
         ((a, b, c) in arb_three_bitsets())
@@ -310,7 +310,7 @@ prop_compose! {
     }
 }
 
-#[cfg(feature="bits")]
+#[cfg(feature = "bits")]
 prop_compose! {
     fn arb_three_bitsets_with_intersection()
         ((x, y, z) in arb_three_bitsets())
