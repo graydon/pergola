@@ -30,48 +30,51 @@ use im_rc::OrdSet as RcOrdSet;
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-/// `DefTraits` is used to constrain `LatticeDef`s and also type parameters of
-/// structs that implement `LatticeDef`. This requires some explaining.
+/// [`DefTraits`] is used to constrain [`LatticeDef`]s and also type parameters
+/// of structs that implement [`LatticeDef`]. This requires some explaining.
 ///
 /// A `LatticeDef` is typically just a unit-struct with no content aside from
 /// `PhantomData` -- it's essentially a module to be used as a parameter to a
-/// `LatticeElt` -- so it doesn't obviously make sense to constrain them at
-/// all.
+/// `LatticeElt` -- so it doesn't obviously make sense to constrain them at all.
 ///
-/// But: since `LatticeDef`s wind up as type parameters for a variety of structs
-/// in client libraries (that themselves contain `LatticeElt`s that use those
-/// `LatticeDef`s), any attempt to derive standard traits on such _structs_ will
-/// bump into a bug in derive -- https://github.com/rust-lang/rust/issues/26925
-/// -- which prevents derived impls from working right if a struct's type
-/// parameters don't themselves implement the derived traits.
+/// But: since [`LatticeDef`]s wind up as type parameters for a variety of
+/// structs in client libraries (that themselves contain [`LatticeElt`]s that
+/// use those [`LatticeDef`]s), any attempt to derive standard traits on such
+/// _structs_ will bump into a [bug in
+/// derive](https://github.com/rust-lang/rust/issues/26925) which prevents
+/// derived impls from working right if a struct's type parameters don't
+/// themselves implement the derived traits.
 ///
-/// So to keep derive working downstream, we insist all `LatticeDef`s provide
+/// So to keep derive working downstream, we insist all [`LatticeDef`]s provide
 /// most standard derivable traits. Impls for them can be derived _on_ the
-/// `LatticeDef`s trivially anyways, so this isn't much of a burden.
+/// [`LatticeDef`]s trivially anyways, so this isn't much of a burden.
 
-// The first (trait) part of this definition is a "necessary" condition to be DefTraits.
-// Any time you want to be DefTraits, you must at least meet the given sum of traits.
+// The first (trait) part of this definition is a "necessary" condition to be
+// DefTraits. Any time you want to be DefTraits, you must at least meet the
+// given sum of traits.
 #[cfg(feature = "serde")]
 pub trait DefTraits: Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned {}
 
 #[cfg(not(feature = "serde"))]
 pub trait DefTraits: Debug + Ord + Clone + Hash + Default {}
 
-// The second (impl) part of this definition is a "sufficient" condition to be DefTraits.
-// Any time you meet the given sum of traits, that's sufficient to be DefTraits.
+// The second (impl) part of this definition is a "sufficient" condition to be
+// DefTraits. Any time you meet the given sum of traits, that's sufficient to be
+// DefTraits.
 #[cfg(feature = "serde")]
 impl<T: Debug + Ord + Clone + Hash + Default + Serialize + DeserializeOwned> DefTraits for T {}
 
 #[cfg(not(feature = "serde"))]
 impl<T: Debug + Ord + Clone + Hash + Default> DefTraits for T {}
 
-/// `ValTraits` is used to constrain the `LatticeDef::T` types to include basic
-/// assumptions we need all datatypes to support. But notably not `Ord`! While
-/// several `LatticeDef` type parameters do require `Ord` (which is because of
-/// the the deriving-bug workaround described in the docs of `DefTraits`) the
-/// _partial_ orders of the lattice are separate and defined by the
-/// `LatticeDef`s themselves, and several important `LatticeDef::T` types are
-/// not totally ordered at all (namely all the set-like and map-like ones).
+/// [`ValTraits`] is used to constrain the [`LatticeDef::T`] types to include
+/// basic assumptions we need all datatypes to support. But notably not [`Ord`]!
+/// While several [`LatticeDef`] type parameters do require [`Ord`] (which is
+/// because of the the deriving-bug workaround described in the docs of
+/// [`DefTraits`]) the _partial_ orders of the lattice are separate and defined
+/// by the [`LatticeDef`]s themselves, and several important [`LatticeDef::T`]
+/// types are not totally ordered at all (namely all the set-like and map-like
+/// ones).
 
 #[cfg(feature = "serde")]
 pub trait ValTraits: Debug + Eq + Clone + Hash + Default + Serialize + DeserializeOwned {}
@@ -94,9 +97,9 @@ pub trait LatticeDef: DefTraits {
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering>;
 }
 
-/// A marker trait here to pick out types where `Default::default` is safe to
+/// A marker trait here to pick out types where [`Default::default`] is safe to
 /// use as a unit for a max-lattice. In particular it's _not_ safe in types like
-/// signed integers, where there are many values less than `Default::default`.
+/// signed integers, where there are many values less than [`Default::default`].
 pub trait MaxUnitDefault: Default {}
 impl MaxUnitDefault for String {}
 impl MaxUnitDefault for bool {}
@@ -117,7 +120,7 @@ impl<T: MaxUnitDefault> MaxUnitDefault for std::cell::RefCell<T> {}
 impl<T: MaxUnitDefault> MaxUnitDefault for std::rc::Rc<T> {}
 impl<T: MaxUnitDefault> MaxUnitDefault for Vec<T> {}
 
-/// A marker type for other types that use the `Bounded::min_value` as the unit
+/// A marker type for other types that use the [`Bounded::min_value`] as the unit
 /// for a max-lattice.
 pub trait MaxUnitMinValue: Bounded {}
 impl MaxUnitMinValue for i8 {}
@@ -126,8 +129,8 @@ impl MaxUnitMinValue for i32 {}
 impl MaxUnitMinValue for i64 {}
 impl MaxUnitMinValue for i128 {}
 
-/// This lattice definition recycles the `Ord::max` and `Ord::cmp` of its
-/// element type, as well as either `Default::default` as its unit. In other
+/// This lattice definition recycles the [`Ord::max`] and [`Ord::cmp`] of its
+/// element type, as well as using [`Default::default`] as its unit. In other
 /// words this is the "most normal" lattice over unsigned scalar, vector or
 /// string types, probably the one you want most of the time.
 #[cfg(feature = "serde")]
@@ -153,9 +156,11 @@ impl<M: DefTraits + MaxUnitDefault> LatticeDef for MaxDef<M> {
     }
 }
 
-/// This lattice definition recycles the `Ord::max` and `Ord::cmp` of its
-/// element type, as well as `Bounded::min_value` as its unit. This is
-/// similar to `MaxDef` except it works with signed types.
+/// This lattice definition recycles the [`Ord::max`] and [`Ord::cmp`] of its
+/// element type, as well as using [`Bounded::min_value`] as its unit. This is
+/// similar to [`MaxDef`] except it works with signed types: the default value
+/// of a signed type is still `0` and that's not a unit with respect to
+/// [`Ord::max`] in a lattice with negative numbers.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MaxNum<M: DefTraits> {
@@ -179,17 +184,17 @@ impl<M: DefTraits + MaxUnitMinValue> LatticeDef for MaxNum<M> {
     }
 }
 
-/// This lattice is _similar_ to MaxDef but inverts the order, with the minimal
-/// value according to `Ord::cmp` as its join, and the unit being a putative
-/// "maximal" value of the element type. Since several Ord types do not _have_ a
-/// maximal value (think strings, maps, etc.) `MinOpt` represents its element
-/// using an Option<M> where None is the "maximal" value (that forms the lattice
-/// unit) and Some(M) is for the rest.
+/// This lattice is _similar_ to [`MaxDef`] but inverts the order, with the
+/// minimal value according to [`Ord::cmp`] as its join, and the unit being a
+/// putative "maximal" value of the element type. Since several Ord types do not
+/// _have_ a maximal value (think strings, maps, etc.) [`MinOpt`] represents its
+/// element using an [`Option`] where `None` is the "maximal" value (that forms
+/// the lattice unit) and `Some` is for the other non-unit values.
 ///
 /// Note this may not be quite what you want if your type _does_ have a maximal
-/// element. For example this will make the unit of u32 still be None, not
-/// u32::MAX. For those, use MinNum. Both are _safe_, but MinOpt is weird in
-/// those cases.
+/// element. For example this will make the unit of `u32` still be `None`, not
+/// [`std::u32::MAX`]. For those, use [`MinNum`]. Both are _safe_, but
+/// [`MinOpt`] is weird in those cases.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct MinOpt<M: DefTraits> {
@@ -229,9 +234,9 @@ impl<M: DefTraits> LatticeDef for MinOpt<M> {
     }
 }
 
-/// This is like `MinOpt` but for numeric (or specifically `Bounded`) types
+/// This is like [`MinOpt`] but for numeric (or specifically [`Bounded`]) types
 /// that have a numeric upper bound: it uses that as the unit rather than
-/// the additional "maximal value" tacked on in `MinOpt`. Best option for
+/// the additional "maximal value" tacked on in [`MinOpt`]. Best option for
 /// numeric lattices with join as minimum.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
@@ -256,8 +261,8 @@ impl<M: DefTraits + Bounded> LatticeDef for MinNum<M> {
     }
 }
 
-/// Wrap a BitSet in a newtype so we can implement serde traits on it
-/// (weirdly by delegating _to_ its inner BitVec).
+/// Wrap a [`BitSet`] in a newtype so we can implement serde traits on it
+/// (weirdly by delegating _to_ its inner `BitVec`).
 #[cfg(feature = "bits")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default)]
 pub struct BitSetWrapper(pub BitSet);
@@ -286,15 +291,15 @@ impl<'a> Deserialize<'a> for BitSetWrapper {
     }
 }
 
-/// This lattice is a standard bitset-with-union.
+/// This lattice is a standard [`BitSet`]-with-union.
 ///
-/// Note: you _could_ use a `BitSet` in the `MaxStd` or `MinOpt` lattices
-/// (`BitSet` satisfies the bounds) but the "set semantics" you usually want in
-/// a set-of-sets lattice aren't achieved that way: the `Ord`-provided order on
-/// `BitSet` is a _lexicographical total order_ on the _sequence_ of bits,
-/// rather than set-theoretic sub/superset relation (which is only a partial
-/// order), and of course joining by max (or min) of that order will not produce
-/// a union (or intersection) as one would want.
+/// Note: you _could_ use a [`BitSet`] in the [`MaxDef`] or [`MinOpt`] lattices
+/// ([`BitSet`] satisfies the bounds) but the "set semantics" you usually want
+/// in a set-of-sets lattice aren't achieved that way: the [`Ord`]-provided
+/// order on [`BitSet`] is a _lexicographical total order_ on the _sequence_ of
+/// bits, rather than set-theoretic sub/superset relation (which is only a
+/// partial order), and of course joining by max (or min) of that order will not
+/// produce a union (or intersection) as one would want.
 #[cfg(all(feature = "bits", feature = "serde"))]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct BitSetWithUnion;
@@ -325,13 +330,13 @@ impl LatticeDef for BitSetWithUnion {
     }
 }
 
-/// This lattice is a standard bitset-with-intersection.
+/// This lattice is a standard [`BitSet`]-with-intersection.
 ///
-/// As with `BitSetWithUnion`, this is a lattice over `BitSet` with
+/// As with [`BitSetWithUnion`], this is a lattice over [`BitSet`] with
 /// set-semantics rather than the lexicographical-total-order provided by the
-/// `Ord` implementation on `BitSet`. And as with `MinOpt`, this provides a
-/// putative "maximal value" for the underlying type (a superset of any actual
-/// `Bitset`) as well as a join that inverts the typical order of a set-valued
+/// [`Ord`] implementation on [`BitSet`]. And as with [`MinOpt`], this provides
+/// a putative "maximal value" for the underlying type (a superset of any actual
+/// [`BitSet`]) as well as a join that inverts the typical order of a set-valued
 /// lattice, taking set-intersections from the "maximal" unit upwards towards
 /// the empty set (at the top of the lattice).
 #[cfg(all(feature = "bits", feature = "serde"))]
@@ -384,7 +389,7 @@ macro_rules! impl_map_with_union {
         /// join-with-unit -- and the elementwise join of values for keys that
         /// exist in both maps.
         ///
-        /// As with `BitSet`, this avoids the typical _lexicographic_ order on
+        /// As with [`BitSet`], this avoids the typical _lexicographic_ order on
         /// maps in favour of the join-induced partial order: a subset relation
         /// extended with the lattice orders of the values when the same key is
         /// present in both maps.
@@ -420,11 +425,11 @@ macro_rules! impl_map_with_union {
                 tmp
             }
             fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
-                // This is a complicated partial order: lhs <= rhs if lhs has a subset
-                // of the keys in rhs _and_ every lhs value of every common key is <=
-                // the rhs value. If common-key values are ordered with any mix of
-                // greater or lesser, or if any values on common keys are unordered, the
-                // maps are unordered.
+                // This is a complicated partial order: lhs <= rhs if lhs has a
+                // subset of the keys in rhs _and_ every lhs value of every
+                // common key is <= the rhs value. If common-key values are
+                // ordered with any mix of greater or lesser, or if any values
+                // on common keys are unordered, the maps are unordered.
                 let mut lhs_lt_rhs_at_some_key = false;
                 let mut rhs_lt_lhs_at_some_key = false;
                 for (k, lv) in lhs.iter() {
@@ -595,7 +600,7 @@ impl_map_with_intersection!(RcOrdMapWithIntersection, RcOrdMap);
 #[cfg(any(feature = "im", feature = "im-rc"))]
 macro_rules! impl_im_set_with_union {
     ($LDef:ident, $Set:ident) => {
-        /// This is the same semantics as the `BitSetWithUnion` lattice, but
+        /// This is the same semantics as the [`BitSetWithUnion`] lattice, but
         /// covering sets of arbitrary ordered values.
         #[cfg(feature = "serde")]
         #[derive(
@@ -638,7 +643,7 @@ impl_im_set_with_union!(ArcOrdSetWithUnion, ArcOrdSet);
 #[cfg(feature = "im-rc")]
 impl_im_set_with_union!(RcOrdSetWithUnion, RcOrdSet);
 
-/// This is the same semantics as the `BitSetWithUnion` lattice, but covering
+/// This is the same semantics as the [`BitSetWithUnion`] lattice, but covering
 /// sets of arbitrary ordered values.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
@@ -674,8 +679,8 @@ impl<U: DefTraits> LatticeDef for BTreeSetWithUnion<U> {
 #[cfg(any(feature = "im", feature = "im-rc"))]
 macro_rules! impl_im_set_with_intersection {
     ($LDef:ident, $Set:ident) => {
-        /// This is the same semantics as the `BitSetWithIntersection` lattice, but
-        /// covering sets of arbitrary ordered values.
+        /// This is the same semantics as the [`BitSetWithIntersection`]
+        /// lattice, but covering sets of arbitrary ordered values.
         #[cfg(feature = "serde")]
         #[derive(
             Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize,
@@ -729,7 +734,7 @@ impl_im_set_with_intersection!(ArcOrdSetWithIntersection, ArcOrdSet);
 #[cfg(feature = "im-rc")]
 impl_im_set_with_intersection!(RcOrdSetWithIntersection, RcOrdSet);
 
-/// This is the same semantics as the `BitSetWithIntersection` lattice, but
+/// This is the same semantics as the [`BitSetWithIntersection`] lattice, but
 /// covering sets of arbitrary ordered values.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
@@ -774,12 +779,9 @@ impl<U: DefTraits> LatticeDef for BTreeSetWithIntersection<U> {
     }
 }
 
-/// Cartesian product lattices or 2, 3, 4, 5 inner lattices. Join joins elements
-/// pairwise, order is the product order (_not_ lexicographical order) i.e. where
-/// (a, b) <= (c, d) iff a <= c _and_ b <= d.
-///
-/// If you need more than 5-element tuples, maybe just nest these (or submit a
-/// pull request).
+/// Cartesian product lattice for 2 inner lattices, joining elements pairwise
+/// and with the _product_ partial order (_not_ lexicographical order) where `(a,
+/// b) <= (c, d)` iff `a <= c` _and_ `b <= d`.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
@@ -793,25 +795,28 @@ pub struct Tuple2<A: LatticeDef, B: LatticeDef> {
     phantom2: PhantomData<B>,
 }
 impl<A: LatticeDef, B: LatticeDef> LatticeDef for Tuple2<A, B> {
-    type T = (A::T, B::T);
+    type T = (LatticeElt<A>, LatticeElt<B>);
     fn unit() -> Self::T {
-        (A::unit(), B::unit())
+        (Default::default(), Default::default())
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
         let (la, lb) = lhs;
         let (ra, rb) = rhs;
-        (A::join(la, ra), B::join(lb, rb))
+        (la + ra, lb + rb)
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
         let (la, lb) = lhs;
         let (ra, rb) = rhs;
-        match (A::partial_order(la, ra), B::partial_order(lb, rb)) {
+        match (la.partial_cmp(&ra), lb.partial_cmp(&rb)) {
             (Some(a), Some(b)) if a == b => Some(a),
             _ => None,
         }
     }
 }
 
+/// Cartesian product lattice for 3 inner lattices, joining elements pairwise
+/// and with the _product_ partial order (_not_ lexicographical order) where
+/// `(a, b, c) <= (d, e, f)` iff `a <= d` _and_ `b <= e` _and_ `c <= f`.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
@@ -827,22 +832,22 @@ pub struct Tuple3<A: LatticeDef, B: LatticeDef, C: LatticeDef> {
     phantom3: PhantomData<C>,
 }
 impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C> {
-    type T = (A::T, B::T, C::T);
+    type T = (LatticeElt<A>, LatticeElt<B>, LatticeElt<C>);
     fn unit() -> Self::T {
-        (A::unit(), B::unit(), C::unit())
+        (Default::default(), Default::default(), Default::default())
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
         let (la, lb, lc) = lhs;
         let (ra, rb, rc) = rhs;
-        (A::join(la, ra), B::join(lb, rb), C::join(lc, rc))
+        (la + ra, lb + rb, lc + rc)
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
         let (la, lb, lc) = lhs;
         let (ra, rb, rc) = rhs;
         match (
-            A::partial_order(la, ra),
-            B::partial_order(lb, rb),
-            C::partial_order(lc, rc),
+            la.partial_cmp(&ra),
+            lb.partial_cmp(&rb),
+            lc.partial_cmp(&rc),
         ) {
             (Some(a), Some(b), Some(c)) if a == b && b == c => Some(a),
             _ => None,
@@ -850,6 +855,10 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C>
     }
 }
 
+/// Cartesian product lattice for 4 inner lattices, joining elements pairwise
+/// and with the _product_ partial order (_not_ lexicographical order) where
+/// `(a, b, c, d) <= (e, f, g, h)` iff `a <= e` _and_ `b <= f` _and_ `c <= g`
+/// _and_ `d <= h`.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
@@ -867,28 +876,28 @@ pub struct Tuple4<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> {
     phantom4: PhantomData<D>,
 }
 impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for Tuple4<A, B, C, D> {
-    type T = (A::T, B::T, C::T, D::T);
+    type T = (LatticeElt<A>, LatticeElt<B>, LatticeElt<C>, LatticeElt<D>);
     fn unit() -> Self::T {
-        (A::unit(), B::unit(), C::unit(), D::unit())
+        (
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
         let (la, lb, lc, ld) = lhs;
         let (ra, rb, rc, rd) = rhs;
-        (
-            A::join(la, ra),
-            B::join(lb, rb),
-            C::join(lc, rc),
-            D::join(ld, rd),
-        )
+        (la + ra, lb + rb, lc + rc, ld + rd)
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
         let (la, lb, lc, ld) = lhs;
         let (ra, rb, rc, rd) = rhs;
         match (
-            A::partial_order(la, ra),
-            B::partial_order(lb, rb),
-            C::partial_order(lc, rc),
-            D::partial_order(ld, rd),
+            la.partial_cmp(&ra),
+            lb.partial_cmp(&rb),
+            lc.partial_cmp(&rc),
+            ld.partial_cmp(&rd),
         ) {
             (Some(a), Some(b), Some(c), Some(d)) if a == b && b == c && c == d => Some(a),
             _ => None,
@@ -896,6 +905,10 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for 
     }
 }
 
+/// Cartesian product lattice for 5 inner lattices, joining elements pairwise
+/// and with the _product_ partial order (_not_ lexicographical order) where
+/// `(a, b, c, d, e) <= (f, g, h, i, j)` iff `a <= f` _and_ `b <= g` _and_ `c <= h`
+/// _and_ `d <= i` _and_ `e <= j`.
 #[cfg(feature = "serde")]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Default, Serialize, Deserialize)]
 pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> {
@@ -917,30 +930,36 @@ pub struct Tuple5<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E:
 impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> LatticeDef
     for Tuple5<A, B, C, D, E>
 {
-    type T = (A::T, B::T, C::T, D::T, E::T);
+    type T = (
+        LatticeElt<A>,
+        LatticeElt<B>,
+        LatticeElt<C>,
+        LatticeElt<D>,
+        LatticeElt<E>,
+    );
     fn unit() -> Self::T {
-        (A::unit(), B::unit(), C::unit(), D::unit(), E::unit())
+        (
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
     }
     fn join(lhs: &Self::T, rhs: &Self::T) -> Self::T {
         let (la, lb, lc, ld, le) = lhs;
         let (ra, rb, rc, rd, re) = rhs;
-        (
-            A::join(la, ra),
-            B::join(lb, rb),
-            C::join(lc, rc),
-            D::join(ld, rd),
-            E::join(le, re),
-        )
+        (la + ra, lb + rb, lc + rc, ld + rd, le + re)
     }
     fn partial_order(lhs: &Self::T, rhs: &Self::T) -> Option<Ordering> {
         let (la, lb, lc, ld, le) = lhs;
         let (ra, rb, rc, rd, re) = rhs;
         match (
-            A::partial_order(la, ra),
-            B::partial_order(lb, rb),
-            C::partial_order(lc, rc),
-            D::partial_order(ld, rd),
-            E::partial_order(le, re),
+            la.partial_cmp(&ra),
+            lb.partial_cmp(&rb),
+            lc.partial_cmp(&rc),
+            ld.partial_cmp(&rd),
+            le.partial_cmp(&re),
         ) {
             (Some(a), Some(b), Some(c), Some(d), Some(e))
                 if a == b && b == c && c == d && d == e =>

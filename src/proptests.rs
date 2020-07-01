@@ -515,8 +515,11 @@ proptest! {
     fn proptest_tuple3_u32((a, b, c) in arb_u32_triple_triple())
     {
         type E = LatticeElt<Tuple3<MaxDef<u32>,MaxDef<u32>,MaxDef<u32>>>;
+        fn conv(v: (u32,u32,u32)) -> E {
+            (v.0.into(), v.1.into(), v.2.into()).into()
+        }
         all_props("triples of unsigned ints",
-                  &E::new_from(a), &E::new_from(b), &E::new_from(c))?;
+                  &conv(a), &conv(b), &conv(c))?;
     }
 
     #[test]

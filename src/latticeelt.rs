@@ -54,15 +54,6 @@ where
     }
 }
 
-/// Trait to extract the Def back out of a given LatticeElt.
-pub trait EltDef {
-    type Def: LatticeDef;
-}
-
-impl<D: LatticeDef> EltDef for LatticeElt<D> {
-    type Def = D;
-}
-
 impl<D: LatticeDef> Copy for LatticeElt<D> where D::T: Copy {}
 
 impl<D: LatticeDef> Hash for LatticeElt<D>
@@ -291,32 +282,49 @@ impl<U: DefTraits> From<RcOrdSet<U>> for LatticeElt<RcOrdSetWithIntersection<U>>
     }
 }
 
-impl<A: LatticeDef, B: LatticeDef> From<(A::T, B::T)> for LatticeElt<Tuple2<A, B>> {
-    fn from(t: (A::T, B::T)) -> Self {
-        Self::new_from(t)
-    }
-}
-
-impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> From<(A::T, B::T, C::T)>
-    for LatticeElt<Tuple3<A, B, C>>
+impl<A: LatticeDef, B: LatticeDef> From<(LatticeElt<A>, LatticeElt<B>)>
+    for LatticeElt<Tuple2<A, B>>
 {
-    fn from(t: (A::T, B::T, C::T)) -> Self {
+    fn from(t: (LatticeElt<A>, LatticeElt<B>)) -> Self {
         Self::new_from(t)
     }
 }
 
-impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> From<(A::T, B::T, C::T, D::T)>
+impl<A: LatticeDef, B: LatticeDef, C: LatticeDef>
+    From<(LatticeElt<A>, LatticeElt<B>, LatticeElt<C>)> for LatticeElt<Tuple3<A, B, C>>
+{
+    fn from(t: (LatticeElt<A>, LatticeElt<B>, LatticeElt<C>)) -> Self {
+        Self::new_from(t)
+    }
+}
+
+impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef>
+    From<(LatticeElt<A>, LatticeElt<B>, LatticeElt<C>, LatticeElt<D>)>
     for LatticeElt<Tuple4<A, B, C, D>>
 {
-    fn from(t: (A::T, B::T, C::T, D::T)) -> Self {
+    fn from(t: (LatticeElt<A>, LatticeElt<B>, LatticeElt<C>, LatticeElt<D>)) -> Self {
         Self::new_from(t)
     }
 }
 
 impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef>
-    From<(A::T, B::T, C::T, D::T, E::T)> for LatticeElt<Tuple5<A, B, C, D, E>>
+    From<(
+        LatticeElt<A>,
+        LatticeElt<B>,
+        LatticeElt<C>,
+        LatticeElt<D>,
+        LatticeElt<E>,
+    )> for LatticeElt<Tuple5<A, B, C, D, E>>
 {
-    fn from(t: (A::T, B::T, C::T, D::T, E::T)) -> Self {
+    fn from(
+        t: (
+            LatticeElt<A>,
+            LatticeElt<B>,
+            LatticeElt<C>,
+            LatticeElt<D>,
+            LatticeElt<E>,
+        ),
+    ) -> Self {
         Self::new_from(t)
     }
 }
