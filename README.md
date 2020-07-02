@@ -10,15 +10,11 @@ convenient methods to work with (including impls of standard Rust operator
 traits).
 
 This unusual split exists because many types have multiple equally viable
-lattices you can build on them (eg. u32-with-min or u32-with-max) and we want to
-avoid both coupling any given lattice definition to the type _or_ accidentally
-inheriting an impl for any of the type's "standard semantics" as the lattice
-semantics, eg. we don't want to inherit u32's standard partial order as any
-lattice's partial order, unless explicitly building such a lattice.
-
-To minimize disruption caused by this two-level wrapping scheme and provide a
-degree of compositionality, every `LatticeElt` also implements `LatticeDef` by
-delegation to the `LatticeDef` it's parameterized over.
+lattices you can build on them (eg. `u32`-with-`min` or `u32`-with-`max`) and we
+want to avoid both coupling any given lattice definition to the type _or_
+accidentally inheriting an impl for any of the type's "standard semantics" as
+the lattice semantics, eg. we don't want to inherit `u32`'s standard partial
+order as any lattice's partial order, unless explicitly building such a lattice.
 
 # Examples
 
@@ -34,6 +30,25 @@ let u = Elt::new_from(2);
 let w = v + u;               // calls join(), which calls max()
 assert!(v < u);
 assert!(v < w);
+```
+
+## Composite tuple lattice
+```rust
+use pergola::{MaxDef,Tuple3,LatticeElt};
+
+type NumDef = MaxDef<u32>;
+type NumElt = LatticeElt<NumDef>;
+type TupDef = Tuple3<NumDef,NumDef,NumDef>;
+type TupElt = LatticeElt<TupDef>;
+let n1: NumElt = (1).into();
+let n2: NumElt = (2).into();
+let n3: NumElt = (3).into();
+let tup: TupElt = (n1, n2, n3).into();
+assert!(tup.value.0 < tup.value.1);
+assert!((tup.value.0 + tup.value.1) == tup.value.1);
+let n1ref: &NumElt = &tup.value.0;
+let n2ref: &NumElt = &tup.value.1;
+assert!(n1ref < n2ref);
 ```
 
 ## Trickier union-map-of-union-bitsets lattice
