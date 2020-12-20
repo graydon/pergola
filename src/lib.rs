@@ -124,3 +124,6 @@ mod proptests;
 
 #[cfg(test)]
 mod quickchecks;
+
+#[cfg(test)]
+mod manualtests;

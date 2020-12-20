@@ -809,6 +809,20 @@ impl<A: LatticeDef, B: LatticeDef> LatticeDef for Tuple2<A, B> {
         let (ra, rb) = rhs;
         match (la.partial_cmp(&ra), lb.partial_cmp(&rb)) {
             (Some(a), Some(b)) if a == b => Some(a),
+            (Some(a), Some(b)) => {
+                use Ordering::*;
+                let a_lteq = a == Less || a == Equal;
+                let b_lteq = b == Less || b == Equal;
+                if a_lteq && b_lteq {
+                    return Some(Less);
+                }
+                let a_gteq = a == Greater || a == Equal;
+                let b_gteq = b == Greater || b == Equal;
+                if a_gteq && b_gteq {
+                    return Some(Greater);
+                }
+                return None;
+            }
             _ => None,
         }
     }
@@ -850,6 +864,22 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef> LatticeDef for Tuple3<A, B, C>
             lc.partial_cmp(&rc),
         ) {
             (Some(a), Some(b), Some(c)) if a == b && b == c => Some(a),
+            (Some(a), Some(b), Some(c)) => {
+                use Ordering::*;
+                let a_lteq = a == Less || a == Equal;
+                let b_lteq = b == Less || b == Equal;
+                let c_lteq = c == Less || c == Equal;
+                if a_lteq && b_lteq && c_lteq {
+                    return Some(Less);
+                }
+                let a_gteq = a == Greater || a == Equal;
+                let b_gteq = b == Greater || b == Equal;
+                let c_gteq = c == Greater || c == Equal;
+                if a_gteq && b_gteq && c_gteq {
+                    return Some(Greater);
+                }
+                return None;
+            }
             _ => None,
         }
     }
@@ -900,6 +930,24 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef> LatticeDef for 
             ld.partial_cmp(&rd),
         ) {
             (Some(a), Some(b), Some(c), Some(d)) if a == b && b == c && c == d => Some(a),
+            (Some(a), Some(b), Some(c), Some(d)) => {
+                use Ordering::*;
+                let a_lteq = a == Less || a == Equal;
+                let b_lteq = b == Less || b == Equal;
+                let c_lteq = c == Less || c == Equal;
+                let d_lteq = d == Less || d == Equal;
+                if a_lteq && b_lteq && c_lteq && d_lteq {
+                    return Some(Less);
+                }
+                let a_gteq = a == Greater || a == Equal;
+                let b_gteq = b == Greater || b == Equal;
+                let c_gteq = c == Greater || c == Equal;
+                let d_gteq = d == Greater || d == Equal;
+                if a_gteq && b_gteq && c_gteq && d_gteq {
+                    return Some(Greater);
+                }
+                return None;
+            }
             _ => None,
         }
     }
@@ -965,6 +1013,26 @@ impl<A: LatticeDef, B: LatticeDef, C: LatticeDef, D: LatticeDef, E: LatticeDef> 
                 if a == b && b == c && c == d && d == e =>
             {
                 Some(a)
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e)) => {
+                use Ordering::*;
+                let a_lteq = a == Less || a == Equal;
+                let b_lteq = b == Less || b == Equal;
+                let c_lteq = c == Less || c == Equal;
+                let d_lteq = d == Less || d == Equal;
+                let e_lteq = e == Less || e == Equal;
+                if a_lteq && b_lteq && c_lteq && d_lteq && e_lteq {
+                    return Some(Less);
+                }
+                let a_gteq = a == Greater || a == Equal;
+                let b_gteq = b == Greater || b == Equal;
+                let c_gteq = c == Greater || c == Equal;
+                let d_gteq = d == Greater || d == Equal;
+                let e_gteq = e == Greater || e == Equal;
+                if a_gteq && b_gteq && c_gteq && d_gteq && e_gteq {
+                    return Some(Greater);
+                }
+                return None;
             }
             _ => None,
         }
